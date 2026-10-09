@@ -2,15 +2,13 @@ import React, { useState, useMemo } from 'react';
 import { 
   Search, 
   SlidersHorizontal, 
-  Filter, 
-  FolderPlus, 
-  CheckCircle2, 
   RotateCcw
 } from 'lucide-react';
 import { Task, TaskFilter, TaskSort } from '../types';
 import { TaskCard } from './TaskCard';
 import { getUrgencyInfo } from '../utils/date';
 import { calculateTaskScore } from '../utils/ranking';
+import { BitmapChevron } from './BitmapChevron';
 
 interface TaskListProps {
   tasks: Task[];
@@ -43,7 +41,6 @@ export const TaskList: React.FC<TaskListProps> = ({
     return Array.from(courses).sort();
   }, [tasks]);
 
-  // Priority ordering map
   const priorityOrder: Record<string, number> = {
     urgent: 4,
     high: 3,
@@ -78,7 +75,6 @@ export const TaskList: React.FC<TaskListProps> = ({
 
       return true;
     }).sort((a, b) => {
-      // Completed tasks always settle to the bottom in general views
       if (a.completed !== b.completed) {
         return a.completed ? 1 : -1;
       }
@@ -113,115 +109,104 @@ export const TaskList: React.FC<TaskListProps> = ({
   const completedCount = tasks.filter((t) => t.completed).length;
 
   return (
-    <div className="space-y-5">
-      {/* Search & Filter Controls Toolbar */}
-      <div className="p-4 rounded-xl bg-zinc-900/70 border border-zinc-800 backdrop-blur-sm space-y-3.5">
+    <div id="section-radar" className="space-y-4">
+      {/* Section Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b border-white/10 pb-3 gap-2">
+        <div>
+          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-orange-400 block">
+            03 // RADAR QUEUE
+          </span>
+          <h2 className="font-display text-3xl sm:text-4xl text-white tracking-tight uppercase">
+            ACTIVE COURSEWORK DEADLINES
+          </h2>
+        </div>
+        <p className="font-mono text-xs text-zinc-500 text-left sm:text-right">
+          TRIAGED VIA TIME PROXIMITY & ESTIMATED EFFORT
+        </p>
+      </div>
+
+      {/* Control Bar */}
+      <div className="border border-white/10 bg-zinc-950 p-3 sm:p-4 space-y-3 font-mono">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Search Input */}
+          {/* Search Field */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input
               type="text"
-              placeholder="Search assignments, course codes, or notes..."
+              placeholder="SEARCH RADAR BY TITLE, COURSE OR NOTE..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-brand-500 text-white text-xs sm:text-sm placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              className="w-full pl-9 pr-14 py-2 bg-black border border-white/10 text-white text-xs placeholder-zinc-600 focus:outline-none focus:border-orange-500 uppercase tracking-wider"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400 hover:text-white"
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-400 hover:text-white"
               >
-                Clear
+                [CLR]
               </button>
             )}
           </div>
 
-          {/* Sort Selector */}
+          {/* Sort Menu */}
           <div className="flex items-center space-x-2 shrink-0">
-            <span className="text-xs text-zinc-400 flex items-center space-x-1 hidden sm:flex">
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>Sort:</span>
+            <span className="text-[10px] text-zinc-500 flex items-center space-x-1 hidden sm:flex">
+              <SlidersHorizontal className="w-3 h-3" />
+              <span>SORT:</span>
             </span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as TaskSort)}
-              className="px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs sm:text-sm text-zinc-200 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              className="px-2.5 py-1.5 bg-black border border-white/10 text-xs text-zinc-200 focus:border-orange-500 focus:outline-none uppercase tracking-wider"
             >
-              <option value="smart">🎯 Smart Rescue Priority</option>
-              <option value="deadline">⏱ Deadline (Soonest first)</option>
-              <option value="priority">🔥 Priority (Urgent first)</option>
-              <option value="effort-asc">⚡ Effort (Shortest / Quick Win)</option>
-              <option value="effort-desc">📚 Effort (Longest first)</option>
+              <option value="smart">🎯 SMART TRIAGE RANK</option>
+              <option value="deadline">⏱ DEADLINE (SOONEST)</option>
+              <option value="priority">🔥 PRIORITY (URGENT)</option>
+              <option value="effort-asc">⚡ EFFORT (QUICK WIN)</option>
+              <option value="effort-desc">📚 EFFORT (HEAVY LIFT)</option>
             </select>
           </div>
         </div>
 
-        {/* Filter Pills Row */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-zinc-800/60">
+        {/* Filter Pills */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5 text-xs">
           <div className="flex flex-wrap items-center gap-1.5">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                filter === 'all'
-                  ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30'
-                  : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-              }`}
-            >
-              All ({tasks.length})
-            </button>
-            <button
-              onClick={() => setFilter('active')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                filter === 'active'
-                  ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30'
-                  : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-              }`}
-            >
-              Pending ({activeCount})
-            </button>
-            <button
-              onClick={() => setFilter('due-today')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                filter === 'due-today'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                  : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-              }`}
-            >
-              Due Today (&lt;24h)
-            </button>
-            <button
-              onClick={() => setFilter('overdue')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                filter === 'overdue'
-                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                  : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-              }`}
-            >
-              Overdue
-            </button>
-            <button
-              onClick={() => setFilter('completed')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                filter === 'completed'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                  : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
-              }`}
-            >
-              Completed ({completedCount})
-            </button>
+            {[
+              { id: 'all', label: `ALL [${tasks.length}]` },
+              { id: 'active', label: `PENDING [${activeCount}]` },
+              { id: 'due-today', label: `DUE TODAY (<24H)` },
+              { id: 'overdue', label: `OVERDUE` },
+              { id: 'completed', label: `RESOLVED [${completedCount}]` },
+            ].map(({ id, label }) => {
+              const isSelected = filter === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setFilter(id as TaskFilter)}
+                  type="button"
+                  className={`px-2.5 py-1 text-[11px] uppercase tracking-wider transition-all border ${
+                    isSelected
+                      ? 'border-orange-500 bg-orange-500/10 text-orange-400 font-bold'
+                      : 'border-white/10 hover:border-white/20 text-zinc-400 hover:text-white bg-black/40'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Filter by course if multiple courses exist */}
+          {/* Course filter */}
           {uniqueCourses.length > 0 && (
-            <div className="flex items-center space-x-1.5">
-              <span className="text-[11px] text-zinc-500">Course:</span>
+            <div className="flex items-center space-x-1.5 text-[11px]">
+              <span className="text-zinc-600">COURSE:</span>
               <select
                 value={selectedCourse}
                 onChange={(e) => setSelectedCourse(e.target.value)}
-                className="px-2.5 py-1 rounded-lg bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 focus:outline-none"
+                className="px-2 py-1 bg-black border border-white/10 text-zinc-300 focus:outline-none uppercase"
               >
-                <option value="all">All Courses</option>
+                <option value="all">ALL COURSES</option>
                 {uniqueCourses.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -233,13 +218,14 @@ export const TaskList: React.FC<TaskListProps> = ({
         </div>
       </div>
 
-      {/* Task List Grid / Empty States */}
+      {/* Task Cards Stack */}
       {filteredTasks.length > 0 ? (
-        <div className="grid grid-cols-1 gap-3.5">
-          {filteredTasks.map((task) => (
+        <div className="space-y-3">
+          {filteredTasks.map((task, idx) => (
             <TaskCard
               key={task.id}
               task={task}
+              index={idx}
               onToggleComplete={onToggleComplete}
               onEdit={onEdit}
               onDelete={onDelete}
@@ -247,52 +233,59 @@ export const TaskList: React.FC<TaskListProps> = ({
           ))}
         </div>
       ) : (
-        /* Empty State (Fulfills Feature #7) */
-        <div className="p-8 sm:p-12 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800/80">
+        /* Empty State */
+        <div className="p-8 sm:p-12 text-center border border-white/10 bg-zinc-950/60 font-mono">
           {tasks.length === 0 ? (
-            <div className="max-w-md mx-auto space-y-4">
-              <div className="w-12 h-12 mx-auto rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-400">
-                <FolderPlus className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-white">No Coursework Tracked</h3>
-                <p className="text-xs sm:text-sm text-zinc-400 mt-1">
-                  Start by adding your current college assignments or load the sample tasks to test the triage engine.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <div className="max-w-md mx-auto space-y-3">
+              <span className="text-xs uppercase tracking-[0.25em] text-orange-400 block">
+                SIGNAL // EMPTY
+              </span>
+              <h3 className="font-display text-3xl sm:text-4xl text-white uppercase tracking-tight">
+                No Tracked Coursework
+              </h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Your priority radar is currently clear. Add a new deadline or load demo coursework to test the triage engine.
+              </p>
+              <div className="flex items-center justify-center gap-3 pt-3">
                 <button
                   onClick={onOpenAddTask}
-                  className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs sm:text-sm font-semibold transition-all shadow-md shadow-brand-950/40"
+                  type="button"
+                  className="inline-flex items-center gap-2 border border-orange-500 bg-orange-500 text-black px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-orange-400 transition-colors cursor-pointer"
                 >
-                  Add Your First Task
+                  <span>Add First Task</span>
+                  <BitmapChevron />
                 </button>
                 <button
                   onClick={onResetSamples}
-                  className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs sm:text-sm font-medium transition-all"
+                  type="button"
+                  className="border border-white/10 px-4 py-2 text-xs uppercase tracking-widest text-zinc-300 hover:text-white hover:border-white/30 transition-colors"
                 >
-                  Load Sample Tasks
+                  Load Sample Data
                 </button>
               </div>
             </div>
           ) : filter === 'active' && activeCount === 0 ? (
-            <div className="max-w-md mx-auto space-y-3">
-              <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-white">All Pending Deadlines Completed!</h3>
-              <p className="text-xs sm:text-sm text-zinc-400">
-                Outstanding job! You've cleared every single pending assignment on your radar.
+            <div className="max-w-md mx-auto space-y-2">
+              <span className="text-xs uppercase tracking-[0.25em] text-emerald-400 block">
+                STATUS // NOMINAL
+              </span>
+              <h3 className="font-display text-3xl sm:text-4xl text-white uppercase tracking-tight">
+                All Deadlines Conquered
+              </h3>
+              <p className="text-xs text-zinc-400">
+                Outstanding execution. Every assignment on your radar has been resolved.
               </p>
             </div>
           ) : (
             <div className="max-w-md mx-auto space-y-3">
-              <div className="w-12 h-12 mx-auto rounded-2xl bg-zinc-800 flex items-center justify-center text-zinc-400">
-                <Filter className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-bold text-white">No Matching Tasks Found</h3>
-              <p className="text-xs sm:text-sm text-zinc-400">
-                No items match your active search or filter criteria. Try clearing search filters.
+              <span className="text-xs uppercase tracking-[0.25em] text-zinc-500 block">
+                FILTER // NO MATCH
+              </span>
+              <h3 className="font-display text-2xl sm:text-3xl text-white uppercase tracking-tight">
+                Zero Items Matching Query
+              </h3>
+              <p className="text-xs text-zinc-500">
+                No coursework matches your active filter or search keywords.
               </p>
               <button
                 onClick={() => {
@@ -300,10 +293,11 @@ export const TaskList: React.FC<TaskListProps> = ({
                   setFilter('all');
                   setSelectedCourse('all');
                 }}
-                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 text-xs font-semibold hover:bg-zinc-700 transition-colors"
+                type="button"
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 border border-white/20 text-xs text-zinc-300 hover:text-white transition-colors"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset Filters</span>
+                <span>Reset Radar Filters</span>
               </button>
             </div>
           )}

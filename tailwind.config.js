@@ -7,33 +7,33 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        display: ['"Bebas Neue"', 'sans-serif'],
+        sans: ['"IBM Plex Sans"', 'sans-serif'],
+        mono: ['"IBM Plex Mono"', 'monospace'],
+      },
       colors: {
-        brand: {
-          50: '#f5f3ff',
-          100: '#ede9fe',
-          200: '#ddd6fe',
-          300: '#c4b5fd',
-          400: '#a78bfa',
-          500: '#8b5cf6',
-          600: '#7c3aed',
-          700: '#6d28d9',
-          800: '#5b21b6',
-          900: '#4c1d95',
-          950: '#2e1065',
+        background: '#0c0c0c',
+        card: {
+          DEFAULT: '#141414',
+          foreground: '#f5f5f5',
+          hover: '#191919',
+        },
+        border: {
+          DEFAULT: '#262626',
+          subtle: 'rgba(255, 255, 255, 0.08)',
+        },
+        accent: {
+          DEFAULT: '#f97316',
+          orange: '#ff5500',
+          glow: 'rgba(249, 115, 22, 0.15)',
+        },
+        muted: {
+          DEFAULT: '#222222',
+          foreground: '#8c8c8c',
         }
       },
-      animation: {
-        'pulse-subtle': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'shimmer': 'shimmer 2s linear infinite',
-      },
-      keyframes: {
-        shimmer: {
-          '0%': { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition: '200% 0' },
-        }
-      }
     },
   },
   plugins: [],
 }
-

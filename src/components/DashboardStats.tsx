@@ -1,5 +1,4 @@
 import React from 'react';
-import { CheckCircle2, Clock, AlertTriangle, Layers } from 'lucide-react';
 import { Task } from '../types';
 import { getUrgencyInfo } from '../utils/date';
 
@@ -13,7 +12,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ tasks }) => {
   const activeTasks = totalTasks - completedTasks;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  // Incomplete tasks analysis
+  // Incomplete tasks telemetry
   const incomplete = tasks.filter((t) => !t.completed);
   let overdueCount = 0;
   let dueWithin24hCount = 0;
@@ -38,124 +37,123 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ tasks }) => {
   });
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* 1. Total Tasks */}
-      <div className="relative overflow-hidden p-5 rounded-xl bg-zinc-900/70 border border-zinc-800 backdrop-blur-sm transition-all hover:border-zinc-700">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-            Total Coursework
-          </span>
-          <div className="p-2 rounded-lg bg-zinc-800 text-brand-400 border border-zinc-700/60">
-            <Layers className="w-4 h-4" />
-          </div>
-        </div>
-        <div className="mt-3 flex items-baseline space-x-2">
-          <span className="text-3xl font-extrabold text-white">{totalTasks}</span>
-          <span className="text-xs text-zinc-400">
-            ({activeTasks} pending, {completedTasks} done)
-          </span>
-        </div>
-        <div className="mt-3 flex items-center space-x-2">
-          <span className="inline-flex items-center text-[11px] font-medium text-brand-300 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20">
-            {activeTasks === 0 ? 'All clear' : `${activeTasks} remaining to finish`}
-          </span>
-        </div>
+    <div id="section-telemetry" className="space-y-3">
+      {/* Section Header */}
+      <div className="flex items-center justify-between border-b border-white/10 pb-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-orange-400">
+          02 // TELEMETRY & WORKLOAD
+        </span>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+          SEMESTER MONITOR
+        </span>
       </div>
 
-      {/* 2. Completed Tasks */}
-      <div className="relative overflow-hidden p-5 rounded-xl bg-zinc-900/70 border border-zinc-800 backdrop-blur-sm transition-all hover:border-zinc-700">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-            Completed Tasks
-          </span>
-          <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <CheckCircle2 className="w-4 h-4" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Metric 01: Total Coursework */}
+        <div className="group relative border border-white/10 hover:border-white/20 bg-zinc-950/70 p-4 sm:p-5 transition-all">
+          <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+            <span>[ 01 ] TOTAL RADAR</span>
+            <span className="text-zinc-400">{activeTasks} ACTIVE</span>
           </div>
-        </div>
-        <div className="mt-3 flex items-baseline space-x-2">
-          <span className="text-3xl font-extrabold text-emerald-400">{completedTasks}</span>
-          <span className="text-xs text-zinc-400">
-            / {totalTasks} finished
-          </span>
-        </div>
-        {/* Progress bar */}
-        <div className="mt-3">
-          <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
-            <div
-              className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full transition-all duration-500 rounded-full"
-              style={{ width: `${completionRate}%` }}
-            />
-          </div>
-          <div className="mt-1.5 flex justify-between text-[11px] text-zinc-400">
-            <span>{completionRate}% progress</span>
-            <span>{completionRate === 100 ? '100% complete! 🎉' : 'Keep it up'}</span>
-          </div>
-        </div>
-      </div>
 
-      {/* 3. Upcoming Deadlines (<24h / <48h) */}
-      <div className="relative overflow-hidden p-5 rounded-xl bg-zinc-900/70 border border-zinc-800 backdrop-blur-sm transition-all hover:border-zinc-700">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-            Upcoming Deadlines
-          </span>
-          <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            <Clock className="w-4 h-4" />
+          <div className="mt-3 flex items-baseline justify-between">
+            <span className="font-display text-4xl sm:text-5xl text-white tracking-tight">
+              {totalTasks < 10 ? `0${totalTasks}` : totalTasks}
+            </span>
+            <span className="font-mono text-xs text-zinc-400">ASSIGNMENTS</span>
           </div>
-        </div>
-        <div className="mt-3 flex items-baseline space-x-2">
-          <span className="text-3xl font-extrabold text-amber-300">{dueWithin24hCount}</span>
-          <span className="text-xs text-zinc-400">due in &lt;24 hours</span>
-        </div>
-        <div className="mt-3 flex items-center space-x-2">
-          <span className="inline-flex items-center text-[11px] font-medium text-amber-300/90 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-            {dueWithin48hCount} due within 48h
-          </span>
-        </div>
-      </div>
 
-      {/* 4. Attention & Danger Zone */}
-      <div className={`relative overflow-hidden p-5 rounded-xl border backdrop-blur-sm transition-all ${
-        overdueCount > 0 || deficitCount > 0
-          ? 'bg-rose-950/20 border-rose-500/40'
-          : 'bg-zinc-900/70 border-zinc-800'
-      }`}>
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-            Rescue Alerts
-          </span>
-          <div className={`p-2 rounded-lg border ${
-            overdueCount > 0 || deficitCount > 0
-              ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-              : 'bg-zinc-800 text-zinc-400 border-zinc-700/60'
-          }`}>
-            <AlertTriangle className="w-4 h-4" />
+          <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between font-mono text-[10px] text-zinc-400">
+            <span>STATUS:</span>
+            <span className="text-zinc-300 font-medium">{activeTasks === 0 ? 'QUEUE CLEAR' : `${activeTasks} REMAINING`}</span>
           </div>
         </div>
-        <div className="mt-3 flex items-baseline space-x-2">
-          <span className={`text-3xl font-extrabold ${overdueCount > 0 ? 'text-rose-400' : 'text-zinc-200'}`}>
-            {overdueCount + deficitCount}
-          </span>
-          <span className="text-xs text-zinc-400">
-            critical issues
-          </span>
+
+        {/* Metric 02: Completed Rate */}
+        <div className="group relative border border-white/10 hover:border-white/20 bg-zinc-950/70 p-4 sm:p-5 transition-all">
+          <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+            <span>[ 02 ] RESOLVED</span>
+            <span className="text-emerald-400">{completionRate}% COMPLETE</span>
+          </div>
+
+          <div className="mt-3 flex items-baseline justify-between">
+            <span className="font-display text-4xl sm:text-5xl text-emerald-400 tracking-tight">
+              {completedTasks < 10 ? `0${completedTasks}` : completedTasks}
+            </span>
+            <span className="font-mono text-xs text-zinc-400">/ {totalTasks} FINISHED</span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-white/5 space-y-1.5">
+            <div className="w-full bg-zinc-900 h-1 overflow-hidden">
+              <div
+                className="bg-emerald-500 h-full transition-all duration-500"
+                style={{ width: `${completionRate}%` }}
+              />
+            </div>
+            <div className="flex justify-between font-mono text-[10px] text-zinc-400">
+              <span>EFFICIENCY</span>
+              <span>{completionRate === 100 ? 'MAXIMUM' : `${completionRate}%`}</span>
+            </div>
+          </div>
         </div>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {overdueCount > 0 && (
-            <span className="text-[11px] font-semibold text-rose-300 bg-rose-500/20 px-2 py-0.5 rounded border border-rose-500/30">
-              {overdueCount} Overdue
+
+        {/* Metric 03: Upcoming Deadlines */}
+        <div className="group relative border border-white/10 hover:border-orange-500/40 bg-zinc-950/70 p-4 sm:p-5 transition-all">
+          <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+            <span>[ 03 ] PROXIMITY</span>
+            <span className="text-orange-400">&lt;24H WINDOW</span>
+          </div>
+
+          <div className="mt-3 flex items-baseline justify-between">
+            <span className="font-display text-4xl sm:text-5xl text-orange-400 tracking-tight">
+              {dueWithin24hCount < 10 ? `0${dueWithin24hCount}` : dueWithin24hCount}
             </span>
-          )}
-          {deficitCount > 0 && (
-            <span className="text-[11px] font-semibold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
-              {deficitCount} Time Deficit
+            <span className="font-mono text-xs text-zinc-400">DUE SOON</span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between font-mono text-[10px] text-zinc-400">
+            <span>48H HORIZON:</span>
+            <span className="text-zinc-300 font-medium">{dueWithin48hCount} COMMITMENTS</span>
+          </div>
+        </div>
+
+        {/* Metric 04: Rescue Alerts & Danger Zone */}
+        <div className={`group relative border p-4 sm:p-5 transition-all ${
+          overdueCount > 0 || deficitCount > 0
+            ? 'border-red-500/50 bg-red-950/20'
+            : 'border-white/10 hover:border-white/20 bg-zinc-950/70'
+        }`}>
+          <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+            <span>[ 04 ] DANGER ZONE</span>
+            <span className={overdueCount > 0 || deficitCount > 0 ? 'text-red-400 font-bold' : 'text-zinc-400'}>
+              {overdueCount > 0 ? 'DEFICIT CRITICAL' : 'NOMINAL'}
             </span>
-          )}
-          {overdueCount === 0 && deficitCount === 0 && (
-            <span className="text-[11px] font-medium text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-              ✓ No emergency delays
+          </div>
+
+          <div className="mt-3 flex items-baseline justify-between">
+            <span className={`font-display text-4xl sm:text-5xl tracking-tight ${
+              overdueCount > 0 || deficitCount > 0 ? 'text-red-400' : 'text-zinc-200'
+            }`}>
+              {overdueCount + deficitCount < 10 ? `0${overdueCount + deficitCount}` : overdueCount + deficitCount}
             </span>
-          )}
+            <span className="font-mono text-xs text-zinc-400">HAZARDS</span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-white/5 flex flex-wrap gap-1 font-mono text-[10px]">
+            {overdueCount > 0 && (
+              <span className="text-red-400 border border-red-500/30 px-1.5 py-0.5 bg-red-500/10">
+                {overdueCount} OVERDUE
+              </span>
+            )}
+            {deficitCount > 0 && (
+              <span className="text-orange-400 border border-orange-500/30 px-1.5 py-0.5 bg-orange-500/10">
+                {deficitCount} TIME DEFICIT
+              </span>
+            )}
+            {overdueCount === 0 && deficitCount === 0 && (
+              <span className="text-emerald-400">✓ BUFFER INTEGRITY SECURE</span>
+            )}
+          </div>
         </div>
       </div>
     </div>

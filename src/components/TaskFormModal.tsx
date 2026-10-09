@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, AlertCircle, Sparkles, Check } from 'lucide-react';
+import { X, AlertCircle, Check } from 'lucide-react';
 import { Task, Priority, TaskCategory } from '../types';
 import { toDateTimeLocalString } from '../utils/date';
+import { BitmapChevron } from './BitmapChevron';
+import { ScrambleTextOnHover } from './ScrambleText';
 
 interface TaskFormModalProps {
   isOpen: boolean;
@@ -34,7 +36,6 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
   const [category, setCategory] = useState<TaskCategory>('assignment');
   const [notes, setNotes] = useState('');
 
-  // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -48,7 +49,6 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
         setCategory(initialTask.category);
         setNotes(initialTask.notes || '');
       } else {
-        // Default new task setup: Tomorrow at 11:59 PM
         const tomorrowMidnight = new Date();
         tomorrowMidnight.setDate(tomorrowMidnight.getDate() + 1);
         tomorrowMidnight.setHours(23, 59, 0, 0);
@@ -87,7 +87,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
 
     const hours = Number(estimatedHours);
     if (!estimatedHours || isNaN(hours) || hours <= 0) {
-      errs.estimatedHours = 'Estimated hours must be a positive number';
+      errs.estimatedHours = 'Estimated hours must be positive';
     } else if (hours > 100) {
       errs.estimatedHours = 'Hours must be 100 or less';
     }
@@ -113,7 +113,6 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
     onClose();
   };
 
-  // Quick deadline setter helper
   const setQuickDeadline = (hoursFromNow: number, setEndOfDay: boolean = false) => {
     const d = new Date();
     if (setEndOfDay) {
@@ -126,41 +125,35 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      {/* Click outside backdrop */}
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
       <div className="fixed inset-0" onClick={onClose} />
 
-      {/* Modal Dialog Card */}
-      <div className="relative w-full max-w-xl bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl shadow-black overflow-hidden z-10 transition-all">
+      <div className="relative w-full max-w-xl bg-[#0e0e0e] border border-white/20 shadow-2xl z-10 font-mono">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-950/40">
-          <div className="flex items-center space-x-2.5">
-            <div className="p-2 rounded-lg bg-brand-500/10 text-brand-400 border border-brand-500/20">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-white">
-                {initialTask ? 'Edit Task Details' : 'Add New Deadline'}
-              </h2>
-              <p className="text-xs text-zinc-400">
-                Provide details for deadline urgency triage and buffer calculation
-              </p>
-            </div>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-black">
+          <div>
+            <span className="text-[10px] text-orange-400 uppercase tracking-[0.25em] block">
+              CONSOLE // ENTRY
+            </span>
+            <h2 className="font-display text-2xl text-white uppercase tracking-tight">
+              {initialTask ? 'Modify Coursework Parameter' : 'Initialize New Deadline'}
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            type="button"
+            className="p-1 border border-white/10 hover:border-white/30 text-zinc-400 hover:text-white transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 sm:space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Title */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
-              Task Title <span className="text-rose-400">*</span>
+            <label className="block text-[11px] font-semibold text-zinc-300 uppercase tracking-widest mb-1.5">
+              Assignment Title <span className="text-orange-400">*</span>
             </label>
             <input
               type="text"
@@ -170,14 +163,14 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                 setTitle(e.target.value);
                 if (errors.title) setErrors((prev) => ({ ...prev, title: '' }));
               }}
-              placeholder="e.g. Distributed Systems Lab 3, Problem Set 4, Midterm Review"
-              className={`w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border ${
-                errors.title ? 'border-rose-500 focus:border-rose-500' : 'border-zinc-800 focus:border-brand-500'
-              } text-white text-sm placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-brand-500 transition-colors`}
+              placeholder="e.g. Distributed Systems Lab 3, Problem Set 4..."
+              className={`w-full px-3 py-2 bg-black border ${
+                errors.title ? 'border-red-500' : 'border-white/15 focus:border-orange-500'
+              } text-white text-xs placeholder-zinc-600 focus:outline-none uppercase tracking-wide`}
             />
             {errors.title && (
-              <p className="mt-1 text-xs text-rose-400 flex items-center space-x-1">
-                <AlertCircle className="w-3.5 h-3.5" />
+              <p className="mt-1 text-[11px] text-red-400 flex items-center space-x-1">
+                <AlertCircle className="w-3 h-3" />
                 <span>{errors.title}</span>
               </p>
             )}
@@ -185,26 +178,24 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
 
           {/* Course & Category Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Course Code */}
             <div>
-              <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
-                Course / Subject
+              <label className="block text-[11px] font-semibold text-zinc-300 uppercase tracking-widest mb-1.5">
+                Course Code
               </label>
               <input
                 type="text"
                 value={course}
                 onChange={(e) => setCourse(e.target.value)}
                 placeholder="e.g. CS 350, ECON 201"
-                className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-brand-500 text-white text-sm placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-brand-500 uppercase"
+                className="w-full px-3 py-2 bg-black border border-white/15 focus:border-orange-500 text-white text-xs uppercase tracking-wide focus:outline-none"
               />
-              {/* Quick Course Chips */}
               <div className="flex flex-wrap gap-1 mt-1.5">
                 {COMMON_COURSES.slice(0, 4).map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setCourse(c)}
-                    className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
+                    className="text-[9px] px-1.5 py-0.5 border border-white/10 hover:border-orange-400/50 text-zinc-400 hover:text-white transition-colors"
                   >
                     {c}
                   </button>
@@ -212,19 +203,18 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
               </div>
             </div>
 
-            {/* Category */}
             <div>
-              <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-[11px] font-semibold text-zinc-300 uppercase tracking-widest mb-1.5">
                 Category
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as TaskCategory)}
-                className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-brand-500 text-white text-sm focus:outline-none focus:ring-1 focus:ring-brand-500"
+                className="w-full px-3 py-2 bg-black border border-white/15 focus:border-orange-500 text-white text-xs uppercase tracking-wide focus:outline-none"
               >
                 <option value="assignment">Assignment / P-Set</option>
                 <option value="project">Project / Lab</option>
-                <option value="exam">Exam / Midterm / Final</option>
+                <option value="exam">Exam / Midterm</option>
                 <option value="quiz">Quiz</option>
                 <option value="reading">Reading / Discussion</option>
                 <option value="other">Other</option>
@@ -235,10 +225,10 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
           {/* Due Date & Time */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
-                Due Date & Time <span className="text-rose-400">*</span>
+              <label className="text-[11px] font-semibold text-zinc-300 uppercase tracking-widest">
+                Due Date & Time <span className="text-orange-400">*</span>
               </label>
-              <span className="text-[11px] text-zinc-400">Local Time</span>
+              <span className="text-[10px] text-zinc-500">LOCAL CLOCK</span>
             </div>
             <input
               type="datetime-local"
@@ -247,57 +237,48 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                 setDueDateTime(e.target.value);
                 if (errors.dueDateTime) setErrors((prev) => ({ ...prev, dueDateTime: '' }));
               }}
-              className={`w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border ${
-                errors.dueDateTime ? 'border-rose-500' : 'border-zinc-800'
-              } text-white text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500`}
+              className={`w-full px-3 py-2 bg-black border ${
+                errors.dueDateTime ? 'border-red-500' : 'border-white/15 focus:border-orange-500'
+              } text-white text-xs focus:outline-none uppercase`}
             />
             {errors.dueDateTime && (
-              <p className="mt-1 text-xs text-rose-400 flex items-center space-x-1">
-                <AlertCircle className="w-3.5 h-3.5" />
+              <p className="mt-1 text-[11px] text-red-400 flex items-center space-x-1">
+                <AlertCircle className="w-3 h-3" />
                 <span>{errors.dueDateTime}</span>
               </p>
             )}
 
-            {/* Quick date presets for college students */}
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
-              <span className="text-[11px] text-zinc-500 mr-1">Quick presets:</span>
+              <span className="text-[10px] text-zinc-600">SHORTCUTS:</span>
               <button
                 type="button"
                 onClick={() => setQuickDeadline(0, true)}
-                className="text-[11px] px-2 py-0.5 rounded bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 transition-colors"
+                className="text-[10px] px-2 py-0.5 border border-white/10 hover:border-white/30 text-zinc-400 hover:text-white"
               >
                 Tonight 11:59 PM
               </button>
               <button
                 type="button"
                 onClick={() => setQuickDeadline(24, true)}
-                className="text-[11px] px-2 py-0.5 rounded bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 transition-colors"
+                className="text-[10px] px-2 py-0.5 border border-white/10 hover:border-white/30 text-zinc-400 hover:text-white"
               >
                 Tomorrow 11:59 PM
               </button>
               <button
                 type="button"
                 onClick={() => setQuickDeadline(48)}
-                className="text-[11px] px-2 py-0.5 rounded bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 transition-colors"
+                className="text-[10px] px-2 py-0.5 border border-white/10 hover:border-white/30 text-zinc-400 hover:text-white"
               >
                 In 2 Days
-              </button>
-              <button
-                type="button"
-                onClick={() => setQuickDeadline(72)}
-                className="text-[11px] px-2 py-0.5 rounded bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 transition-colors"
-              >
-                In 3 Days
               </button>
             </div>
           </div>
 
-          {/* Estimated Hours & Priority Grid */}
+          {/* Effort & Priority */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Estimated Hours */}
             <div>
-              <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
-                Estimated Workload (Hours) <span className="text-rose-400">*</span>
+              <label className="block text-[11px] font-semibold text-zinc-300 uppercase tracking-widest mb-1.5">
+                Estimated Workload (Hours) <span className="text-orange-400">*</span>
               </label>
               <input
                 type="number"
@@ -309,58 +290,55 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                   setEstimatedHours(e.target.value);
                   if (errors.estimatedHours) setErrors((prev) => ({ ...prev, estimatedHours: '' }));
                 }}
-                className={`w-full px-3.5 py-2 rounded-xl bg-zinc-950 border ${
-                  errors.estimatedHours ? 'border-rose-500' : 'border-zinc-800'
-                } text-white text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500`}
+                className={`w-full px-3 py-2 bg-black border ${
+                  errors.estimatedHours ? 'border-red-500' : 'border-white/15 focus:border-orange-500'
+                } text-white text-xs focus:outline-none`}
               />
               {errors.estimatedHours && (
-                <p className="mt-1 text-xs text-rose-400 flex items-center space-x-1">
-                  <AlertCircle className="w-3.5 h-3.5" />
+                <p className="mt-1 text-[11px] text-red-400 flex items-center space-x-1">
+                  <AlertCircle className="w-3 h-3" />
                   <span>{errors.estimatedHours}</span>
                 </p>
               )}
-              {/* Quick Hours Presets */}
+
               <div className="flex flex-wrap gap-1 mt-1.5">
                 {[0.5, 1.0, 2.0, 3.5, 5.0].map((h) => (
                   <button
                     key={h}
                     type="button"
                     onClick={() => setEstimatedHours(h)}
-                    className={`text-[10px] px-1.5 py-0.5 rounded transition-colors ${
+                    className={`text-[9px] px-1.5 py-0.5 border transition-colors ${
                       Number(estimatedHours) === h
-                        ? 'bg-brand-500/30 text-brand-300 font-bold border border-brand-500/40'
-                        : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                        ? 'border-orange-500 bg-orange-500/10 text-orange-400 font-bold'
+                        : 'border-white/10 text-zinc-400 hover:text-white'
                     }`}
                   >
-                    {h}h
+                    {h}H
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Priority Selector */}
             <div>
-              <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
-                Priority Level <span className="text-rose-400">*</span>
+              <label className="block text-[11px] font-semibold text-zinc-300 uppercase tracking-widest mb-1.5">
+                Priority Weight <span className="text-orange-400">*</span>
               </label>
               <div className="grid grid-cols-2 gap-1.5">
                 {(['low', 'medium', 'high', 'urgent'] as Priority[]).map((p) => {
                   const isSelected = priority === p;
-                  let colorStyles = '';
-                  if (p === 'urgent') colorStyles = isSelected ? 'bg-rose-500/20 text-rose-300 border-rose-500' : 'text-rose-400/80';
-                  if (p === 'high') colorStyles = isSelected ? 'bg-amber-500/20 text-amber-300 border-amber-500' : 'text-amber-400/80';
-                  if (p === 'medium') colorStyles = isSelected ? 'bg-blue-500/20 text-blue-300 border-blue-500' : 'text-blue-400/80';
-                  if (p === 'low') colorStyles = isSelected ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500' : 'text-emerald-400/80';
-
                   return (
                     <button
                       key={p}
                       type="button"
                       onClick={() => setPriority(p)}
-                      className={`px-2.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border transition-all text-center ${
+                      className={`px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider border transition-all text-center ${
                         isSelected
-                          ? `${colorStyles} ring-1 ring-brand-500/50 shadow-sm`
-                          : 'bg-zinc-950 border-zinc-800 hover:border-zinc-700 text-zinc-400'
+                          ? p === 'urgent'
+                            ? 'border-red-500 bg-red-500/20 text-red-300'
+                            : p === 'high'
+                              ? 'border-orange-500 bg-orange-500/20 text-orange-300'
+                              : 'border-white bg-white/10 text-white'
+                          : 'border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300 bg-black/40'
                       }`}
                     >
                       {p}
@@ -371,35 +349,40 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
             </div>
           </div>
 
-          {/* Notes (Optional) */}
+          {/* Notes */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
-              Notes / Sub-tasks (Optional)
+            <label className="block text-[11px] font-semibold text-zinc-300 uppercase tracking-widest mb-1.5">
+              Protocol Notes (Optional)
             </label>
             <textarea
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Include citations, push code to GitHub before 11:59 PM..."
-              className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-brand-500 text-white text-sm placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              placeholder="e.g. Submit on Canvas before 11:59 PM..."
+              className="w-full px-3 py-2 bg-black border border-white/15 focus:border-orange-500 text-white text-xs focus:outline-none"
             />
           </div>
 
-          {/* Footer Actions */}
-          <div className="flex items-center justify-end space-x-3 pt-3 border-t border-zinc-800">
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end space-x-3 pt-3 border-t border-white/10">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-semibold transition-colors"
+              className="px-4 py-2 border border-white/10 hover:border-white/30 text-zinc-400 hover:text-white text-xs uppercase tracking-wider transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white text-sm font-semibold shadow-lg shadow-brand-600/30 border border-brand-400/30 transition-all transform active:scale-95"
+              className="group inline-flex items-center space-x-2 border border-orange-500 bg-orange-500 text-black px-5 py-2 text-xs uppercase tracking-widest font-bold hover:bg-orange-400 transition-all cursor-pointer"
             >
-              <Check className="w-4 h-4" />
-              <span>{initialTask ? 'Save Changes' : 'Add to Rescue Radar'}</span>
+              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+              <ScrambleTextOnHover
+                text={initialTask ? 'Commit Changes' : 'Arm Deadline'}
+                as="span"
+                duration={0.3}
+              />
+              <BitmapChevron className="transition-transform duration-200 group-hover:rotate-45" />
             </button>
           </div>
         </form>
