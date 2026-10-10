@@ -45,3 +45,24 @@ export interface Recommendation {
 export type TaskFilter = 'all' | 'active' | 'completed' | 'overdue' | 'due-today';
 export type TaskSort = 'smart' | 'deadline' | 'priority' | 'effort-asc' | 'effort-desc';
 
+export type StopwatchState = 'idle' | 'running' | 'paused' | 'stopped';
+
+export interface StopwatchSession {
+  id: string;
+  durationMs: number;
+  durationFormatted: string; // HH:MM:SS
+  taskId?: string;
+  taskTitle?: string;
+  taskCourse?: string;
+  createdAt: string; // ISO string
+}
+
+export interface StoredStopwatchState {
+  status: StopwatchState;
+  accumulatedMs: number;
+  segmentStartTimestamp: number | null;
+  selectedTaskId?: string;
+  isSaved: boolean;
+  updatedAt: number;
+}
+

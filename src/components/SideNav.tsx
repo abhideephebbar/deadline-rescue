@@ -4,7 +4,8 @@ import { cn } from '../lib/utils';
 const navItems = [
   { id: 'section-triage', label: '01 / Triage' },
   { id: 'section-telemetry', label: '02 / Telemetry' },
-  { id: 'section-radar', label: '03 / Radar' },
+  { id: 'section-stopwatch', label: '03 / Chrono' },
+  { id: 'section-radar', label: '04 / Radar' },
 ];
 
 export function SideNav() {

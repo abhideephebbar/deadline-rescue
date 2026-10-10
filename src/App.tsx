@@ -5,6 +5,7 @@ import { SmartRecommendationCard } from './components/SmartRecommendationCard';
 import { TaskList } from './components/TaskList';
 import { TaskFormModal } from './components/TaskFormModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
+import { Stopwatch } from './components/Stopwatch';
 import { SideNav } from './components/SideNav';
 import { AnimatedNoise } from './components/AnimatedNoise';
 import { SplitFlapText, SplitFlapAudioProvider } from './components/SplitFlapText';
@@ -122,6 +123,13 @@ export function App() {
                 </a>
 
                 <a
+                  href="#section-stopwatch"
+                  className="font-mono text-xs uppercase tracking-widest text-orange-400 hover:text-orange-300 transition-colors"
+                >
+                  Session Stopwatch &darr;
+                </a>
+
+                <a
                   href="#section-radar"
                   className="font-mono text-xs uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
                 >
@@ -149,7 +157,10 @@ export function App() {
             <DashboardStats tasks={tasks} />
           </section>
 
-          {/* Section 03: All Coursework Radar Queue */}
+          {/* Section 03: Stopwatch Feature */}
+          <Stopwatch tasks={tasks} />
+
+          {/* Section 04: All Coursework Radar Queue */}
           <section aria-label="Coursework Radar">
             <TaskList
               tasks={tasks}

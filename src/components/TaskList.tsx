@@ -114,7 +114,7 @@ export const TaskList: React.FC<TaskListProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b border-white/10 pb-3 gap-2">
         <div>
           <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-orange-400 block">
-            03 // RADAR QUEUE
+            04 // RADAR QUEUE
           </span>
           <h2 className="font-display text-3xl sm:text-4xl text-white tracking-tight uppercase">
             ACTIVE COURSEWORK DEADLINES
