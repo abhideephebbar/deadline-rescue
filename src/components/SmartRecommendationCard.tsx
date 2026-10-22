@@ -19,6 +19,7 @@ interface SmartRecommendationCardProps {
   onToggleComplete: (id: string) => void;
   now?: Date;
   capacitySettings?: CapacitySettings;
+  remainingEffortMap?: Record<string, number>;
 }
 
 export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = ({
@@ -26,9 +27,10 @@ export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = (
   onToggleComplete,
   now = new Date(),
   capacitySettings,
+  remainingEffortMap,
 }) => {
   const [showFullQueue, setShowFullQueue] = useState(false);
-  const { topRecommendation, rankedQueue } = getSmartRecommendations(tasks, now, undefined, capacitySettings);
+  const { topRecommendation, rankedQueue } = getSmartRecommendations(tasks, now, remainingEffortMap, capacitySettings);
 
   // If no incomplete tasks
   if (!topRecommendation) {
@@ -153,10 +155,16 @@ export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = (
             <div className="flex items-center justify-between text-xs py-1 border-b border-white/5">
               <span className="text-zinc-500 flex items-center gap-1.5">
                 <Hourglass className="w-3.5 h-3.5" />
-                <span>EST. EFFORT:</span>
+                <span>WORKLOAD:</span>
               </span>
               <span className="text-white font-medium">
-                {task.estimatedHours} HOUR{task.estimatedHours === 1 ? '' : 'S'}
+                {remainingEffortMap && remainingEffortMap[task.id] !== undefined && remainingEffortMap[task.id] !== task.estimatedHours ? (
+                  <span>
+                    <strong className="text-orange-400">{remainingEffortMap[task.id]}H LEFT</strong> ({task.estimatedHours}h est)
+                  </span>
+                ) : (
+                  <span>{task.estimatedHours} HOUR{task.estimatedHours === 1 ? '' : 'S'}</span>
+                )}
               </span>
             </div>
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, AlertCircle, Check } from 'lucide-react';
+import { X, AlertCircle, Check, Sparkles } from 'lucide-react';
 import { Task, Priority, TaskCategory } from '../types';
 import { toDateTimeLocalString } from '../utils/date';
+import { CategoryCalibration, getCalibratedEstimateSuggestion } from '../utils/calibration';
 import { BitmapChevron } from './BitmapChevron';
 import { ScrambleTextOnHover } from './ScrambleText';
 
@@ -18,6 +19,7 @@ interface TaskFormModalProps {
     notes?: string;
   }) => void;
   initialTask?: Task | null;
+  calibrations?: Record<TaskCategory, CategoryCalibration | null>;
 }
 
 const COMMON_COURSES = ['CS 350', 'MATH 220', 'ECON 201', 'BIO 112', 'PHYS 140', 'ENG 105', 'CHEM 101'];
@@ -27,6 +29,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
   onClose,
   onSubmit,
   initialTask,
+  calibrations,
 }) => {
   const [title, setTitle] = useState('');
   const [course, setCourse] = useState('');
@@ -213,7 +216,8 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                 className="w-full px-3 py-2 bg-black border border-white/15 focus:border-orange-500 text-white text-xs uppercase tracking-wide focus:outline-none"
               >
                 <option value="assignment">Assignment / P-Set</option>
-                <option value="project">Project / Lab</option>
+                <option value="lab">Lab / Experiment</option>
+                <option value="project">Project / Milestone</option>
                 <option value="exam">Exam / Midterm</option>
                 <option value="quiz">Quiz</option>
                 <option value="reading">Reading / Discussion</option>
@@ -317,6 +321,43 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                   </button>
                 ))}
               </div>
+
+              {/* Estimate Calibration Suggestion (only shown if >=3 completed samples) */}
+              {(() => {
+                const numVal = typeof estimatedHours === 'number' ? estimatedHours : parseFloat(String(estimatedHours));
+                const suggestion = calibrations && !isNaN(numVal) && numVal > 0
+                  ? getCalibratedEstimateSuggestion(category, numVal, calibrations)
+                  : null;
+
+                if (!suggestion) return null;
+
+                return (
+                  <div className="mt-2.5 p-2.5 border border-orange-500/40 bg-orange-950/20 text-xs space-y-1.5 animate-fade-in">
+                    <div className="flex items-center justify-between text-orange-400 font-bold text-[10px] uppercase tracking-wider">
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-orange-400" />
+                        <span>Estimate Calibration</span>
+                      </span>
+                      <span className="text-[9px] px-1.5 py-0.2 border border-orange-500/30">
+                        {suggestion.sampleCount} SAMPLES
+                      </span>
+                    </div>
+                    <p className="text-zinc-300 text-[11px] leading-relaxed">
+                      {suggestion.reason} Use <strong className="text-white font-bold">{suggestion.suggestedHours}h</strong>?
+                    </p>
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setEstimatedHours(suggestion.suggestedHours)}
+                        className="px-2 py-0.5 bg-orange-500 hover:bg-orange-400 text-black font-bold uppercase text-[10px] tracking-wider transition-colors cursor-pointer"
+                      >
+                        Use {suggestion.suggestedHours}h
+                      </button>
+                      <span className="text-[10px] text-zinc-500">or keep {numVal}h</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div>

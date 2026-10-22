@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Header } from './components/Header';
 import { DashboardStats } from './components/DashboardStats';
 import { SmartRecommendationCard } from './components/SmartRecommendationCard';
@@ -14,6 +14,9 @@ import { ScrambleTextOnHover } from './components/ScrambleText';
 import { BitmapChevron } from './components/BitmapChevron';
 import { useTasks } from './hooks/useTasks';
 import { useCapacity } from './hooks/useCapacity';
+import { useStopwatch } from './hooks/useStopwatch';
+import { getRemainingEffortMap } from './utils/stopwatchIntegration';
+import { getCategoryCalibrations } from './utils/calibration';
 import { Task, Priority, TaskCategory } from './types';
 import { Plus } from 'lucide-react';
 
@@ -36,6 +39,20 @@ export function App() {
     removeBlockedSlot,
     resetToDefaults: resetCapacityDefaults,
   } = useCapacity();
+
+  const stopwatch = useStopwatch();
+
+  // Subtract logged stopwatch time to determine real remaining effort for ranking & display
+  const remainingEffortMap = useMemo(
+    () => getRemainingEffortMap(tasks, stopwatch.savedSessions),
+    [tasks, stopwatch.savedSessions]
+  );
+
+  // Calibrate per-category estimate accuracy from completed tasks with logged sessions
+  const calibrations = useMemo(
+    () => getCategoryCalibrations(tasks, stopwatch.savedSessions),
+    [tasks, stopwatch.savedSessions]
+  );
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCapacityModalOpen, setIsCapacityModalOpen] = useState(false);
@@ -174,6 +191,7 @@ export function App() {
               onToggleComplete={toggleComplete}
               now={currentTime}
               capacitySettings={capacitySettings}
+              remainingEffortMap={remainingEffortMap}
             />
           </section>
 
@@ -188,7 +206,7 @@ export function App() {
           </section>
 
           {/* Section 03: Stopwatch Feature */}
-          <Stopwatch tasks={tasks} />
+          <Stopwatch tasks={tasks} stopwatch={stopwatch} />
 
           {/* Section 04: All Coursework Radar Queue */}
           <section aria-label="Coursework Radar">
@@ -201,6 +219,7 @@ export function App() {
               onResetSamples={resetToSampleTasks}
               now={currentTime}
               capacitySettings={capacitySettings}
+              remainingEffortMap={remainingEffortMap}
             />
           </section>
 
@@ -244,6 +263,7 @@ export function App() {
           }}
           onSubmit={handleModalSubmit}
           initialTask={editingTask}
+          calibrations={calibrations}
         />
 
         {/* Delete Confirm Modal */}

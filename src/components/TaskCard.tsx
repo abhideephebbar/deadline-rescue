@@ -19,6 +19,7 @@ interface TaskCardProps {
   onDelete: (id: string) => void;
   now?: Date;
   capacitySettings?: CapacitySettings;
+  remainingEffort?: number;
 }
 
 export const TaskCard: React.FC<TaskCardProps> = ({
@@ -29,8 +30,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onDelete,
   now = new Date(),
   capacitySettings,
+  remainingEffort,
 }) => {
-  const urgency = getUrgencyInfo(task.dueDateTime, task.estimatedHours, now, capacitySettings);
+  const effort = typeof remainingEffort === 'number' ? remainingEffort : task.estimatedHours;
+  const urgency = getUrgencyInfo(task.dueDateTime, effort, now, capacitySettings);
 
   // Technical priority color styles
   const priorityBadgeStyles: Record<string, string> = {
@@ -186,7 +189,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           {/* Effort */}
           <div className="flex items-center space-x-1">
             <Hourglass className="w-3 h-3 text-zinc-500" />
-            <span>{task.estimatedHours}H EFFORT</span>
+            <span>
+              {typeof remainingEffort === 'number' && remainingEffort !== task.estimatedHours ? (
+                <span>
+                  <strong className="text-orange-400">{remainingEffort}H LEFT</strong> ({task.estimatedHours}H EST)
+                </span>
+              ) : (
+                <span>{task.estimatedHours}H EFFORT</span>
+              )}
+            </span>
           </div>
 
           {/* Buffer margin */}

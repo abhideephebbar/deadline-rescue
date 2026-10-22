@@ -19,6 +19,7 @@ interface TaskListProps {
   onResetSamples: () => void;
   now?: Date;
   capacitySettings?: CapacitySettings;
+  remainingEffortMap?: Record<string, number>;
 }
 
 export const TaskList: React.FC<TaskListProps> = ({
@@ -30,6 +31,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   onResetSamples,
   now = new Date(),
   capacitySettings,
+  remainingEffortMap,
 }) => {
   const [filter, setFilter] = useState<TaskFilter>('all');
   const [selectedCourse, setSelectedCourse] = useState<string>('all');
@@ -84,8 +86,10 @@ export const TaskList: React.FC<TaskListProps> = ({
       }
 
       if (sortBy === 'smart') {
-        const scoreA = calculateTaskScore(a, now, undefined, capacitySettings).score;
-        const scoreB = calculateTaskScore(b, now, undefined, capacitySettings).score;
+        const effortA = remainingEffortMap ? remainingEffortMap[a.id] : undefined;
+        const effortB = remainingEffortMap ? remainingEffortMap[b.id] : undefined;
+        const scoreA = calculateTaskScore(a, now, effortA, capacitySettings).score;
+        const scoreB = calculateTaskScore(b, now, effortB, capacitySettings).score;
         return scoreB - scoreA;
       }
 
@@ -107,7 +111,7 @@ export const TaskList: React.FC<TaskListProps> = ({
 
       return 0;
     });
-  }, [tasks, filter, selectedCourse, searchQuery, sortBy, now, capacitySettings]);
+  }, [tasks, filter, selectedCourse, searchQuery, sortBy, now, capacitySettings, remainingEffortMap]);
 
   const activeCount = tasks.filter((t) => !t.completed).length;
   const completedCount = tasks.filter((t) => t.completed).length;
@@ -235,6 +239,7 @@ export const TaskList: React.FC<TaskListProps> = ({
               onDelete={onDelete}
               now={now}
               capacitySettings={capacitySettings}
+              remainingEffort={remainingEffortMap ? remainingEffortMap[task.id] : undefined}
             />
           ))}
         </div>

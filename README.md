@@ -59,7 +59,13 @@ npm test
    - Blocked recovery & academic windows (sleep from 11 PM to 7 AM, classes from 9 AM to 3 PM) prevent unrealistic buffer assumptions.
    - Real-time daily **Demand vs Capacity Balance** monitor flags overloaded and filling-up days.
 
-3. **Task Management & Form Validation**:
+4. **Real Remaining Effort & Estimate Calibration**:
+   - Subtracts logged stopwatch time from estimated workload to dynamically calculate remaining effort for ranking.
+   - Per-category calibration computes actual-to-estimated ratio from completed assignments once at least 3 samples exist.
+   - Non-intrusive estimate suggestion banners propose realistic adjustments with transparent reasoning ("Labs usually take about 1.4x your estimate. Use 3.5h?").
+   - Never overrides user estimates silently.
+
+5. **Task Management & Form Validation**:
    - Add and edit assignments with title, course code (e.g., `CS 350`), category (assignment, lab, exam, quiz, etc.), due date & time, estimated effort (hours), priority, and notes.
    - Real-time form validation with inline feedback.
    - Fast presets for college students (`Tonight 11:59 PM`, `Tomorrow 11:59 PM`, `In 2 Days`, `+0.5h`, `+1h`, `+2h`, etc.).

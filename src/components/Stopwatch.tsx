@@ -18,6 +18,7 @@ import { useStopwatch } from '../hooks/useStopwatch';
 
 interface StopwatchProps {
   tasks: Task[];
+  stopwatch?: ReturnType<typeof useStopwatch>;
 }
 
 type ConfirmActionType = 
@@ -28,7 +29,8 @@ type ConfirmActionType =
   | 'save_zero_duration'
   | 'clear_history';
 
-export const Stopwatch: React.FC<StopwatchProps> = ({ tasks }) => {
+export const Stopwatch: React.FC<StopwatchProps> = ({ tasks, stopwatch: externalStopwatch }) => {
+  const internalStopwatch = useStopwatch();
   const {
     status,
     displayElapsedMs,
@@ -46,7 +48,7 @@ export const Stopwatch: React.FC<StopwatchProps> = ({ tasks }) => {
     saveSession,
     deleteSession,
     clearAllSessions,
-  } = useStopwatch();
+  } = externalStopwatch || internalStopwatch;
 
   // Confirmation modal state
   const [confirmDialog, setConfirmDialog] = useState<{
