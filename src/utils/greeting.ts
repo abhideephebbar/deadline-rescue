@@ -29,50 +29,58 @@ export interface WelcomeGreetingData {
  * Checks if the user is visiting for the first time.
  */
 export function isFirstVisit(storage?: Storage): boolean {
-  if (!storage) {
-    if (typeof window === 'undefined') return false;
-    storage = window.localStorage;
+  try {
+    const s = storage || (typeof window !== 'undefined' ? window.localStorage : undefined);
+    if (!s) return false;
+    return s.getItem(FIRST_VISIT_STORAGE_KEY) !== 'true';
+  } catch {
+    return false;
   }
-  return storage.getItem(FIRST_VISIT_STORAGE_KEY) !== 'true';
 }
 
 /**
  * Marks that the first visit has occurred.
  */
 export function markFirstVisitSeen(storage?: Storage): void {
-  if (!storage) {
-    if (typeof window === 'undefined') return;
-    storage = window.localStorage;
+  try {
+    const s = storage || (typeof window !== 'undefined' ? window.localStorage : undefined);
+    if (!s) return;
+    s.setItem(FIRST_VISIT_STORAGE_KEY, 'true');
+  } catch {
+    // ignore
   }
-  storage.setItem(FIRST_VISIT_STORAGE_KEY, 'true');
 }
 
 /**
  * Checks if greeting has already been dismissed today.
  */
 export function isGreetingDismissedToday(now: Date = new Date(), storage?: Storage): boolean {
-  if (!storage) {
-    if (typeof window === 'undefined') return false;
-    storage = window.localStorage;
+  try {
+    const s = storage || (typeof window !== 'undefined' ? window.localStorage : undefined);
+    if (!s) return false;
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+      now.getDate()
+    ).padStart(2, '0')}`;
+    return s.getItem(GREETING_DISMISSED_KEY) === todayStr;
+  } catch {
+    return false;
   }
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
-    now.getDate()
-  ).padStart(2, '0')}`;
-  return storage.getItem(GREETING_DISMISSED_KEY) === todayStr;
 }
 
 /**
  * Persists dismissal of the greeting banner for today.
  */
 export function dismissGreetingToday(now: Date = new Date(), storage?: Storage): void {
-  if (!storage) {
-    if (typeof window === 'undefined') return;
-    storage = window.localStorage;
+  try {
+    const s = storage || (typeof window !== 'undefined' ? window.localStorage : undefined);
+    if (!s) return;
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+      now.getDate()
+    ).padStart(2, '0')}`;
+    s.setItem(GREETING_DISMISSED_KEY, todayStr);
+  } catch {
+    // ignore
   }
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
-    now.getDate()
-  ).padStart(2, '0')}`;
-  storage.setItem(GREETING_DISMISSED_KEY, todayStr);
 }
 
 /**

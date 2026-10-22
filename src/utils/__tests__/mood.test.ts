@@ -76,3 +76,4 @@ describe('mood.ts - Workload Mood Calculation', () => {
     expect(getWorkloadMood(tasks, capacity, baseNow)).toBe('calm');
   });
 });
+

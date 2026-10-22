@@ -25,28 +25,27 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
   return (
     <div
       aria-hidden="true"
-      className="fixed inset-0 pointer-events-none overflow-hidden -z-20 bg-[#09090b] select-none"
-      style={{ contain: 'strict' }}
+      className="fixed inset-0 pointer-events-none overflow-hidden z-0 bg-[#09090b] select-none"
     >
       {/* 1. Calm mood layer (Teal & Emerald) */}
       <div
-        className="absolute inset-0 transition-opacity duration-1200 ease-[cubic-bezier(0.22,1,0.36,1)]"
-        style={{ opacity: mood === 'calm' ? 0.85 : 0 }}
+        className="absolute inset-0 transition-opacity duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)]"
+        style={{ opacity: mood === 'calm' ? 1 : 0 }}
       >
         <div
-          className={`absolute -top-32 -left-20 w-[480px] sm:w-[680px] h-[480px] sm:h-[680px] rounded-full blur-[100px] sm:blur-[140px] opacity-25 bg-teal-500/50 ${
+          className={`absolute -top-32 -left-20 w-[500px] sm:w-[700px] h-[500px] sm:h-[700px] rounded-full blur-[90px] sm:blur-[120px] bg-teal-500/30 ${
             shouldAnimate ? 'animate-aurora-blob-1' : ''
           }`}
           style={{ willChange: shouldAnimate ? 'transform' : 'auto' }}
         />
         <div
-          className={`absolute top-[20%] -right-24 w-[420px] sm:w-[620px] h-[420px] sm:h-[620px] rounded-full blur-[110px] sm:blur-[150px] opacity-20 bg-emerald-500/40 ${
+          className={`absolute top-[20%] -right-24 w-[450px] sm:w-[650px] h-[450px] sm:h-[650px] rounded-full blur-[90px] sm:blur-[130px] bg-emerald-500/25 ${
             shouldAnimate ? 'animate-aurora-blob-2' : ''
           }`}
           style={{ willChange: shouldAnimate ? 'transform' : 'auto' }}
         />
         <div
-          className={`absolute -bottom-24 left-[20%] w-[500px] sm:w-[700px] h-[500px] sm:h-[700px] rounded-full blur-[120px] sm:blur-[160px] opacity-20 bg-sky-600/35 ${
+          className={`absolute -bottom-24 left-[15%] w-[500px] sm:w-[720px] h-[500px] sm:h-[720px] rounded-full blur-[100px] sm:blur-[140px] bg-cyan-600/20 ${
             shouldAnimate ? 'animate-aurora-blob-3' : ''
           }`}
           style={{ willChange: shouldAnimate ? 'transform' : 'auto' }}
@@ -55,23 +54,23 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
 
       {/* 2. Busy mood layer (Amber & Orange) */}
       <div
-        className="absolute inset-0 transition-opacity duration-1200 ease-[cubic-bezier(0.22,1,0.36,1)]"
-        style={{ opacity: mood === 'busy' ? 0.9 : 0 }}
+        className="absolute inset-0 transition-opacity duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)]"
+        style={{ opacity: mood === 'busy' ? 1 : 0 }}
       >
         <div
-          className={`absolute -top-32 -left-20 w-[480px] sm:w-[680px] h-[480px] sm:h-[680px] rounded-full blur-[100px] sm:blur-[140px] opacity-30 bg-amber-500/45 ${
+          className={`absolute -top-32 -left-20 w-[500px] sm:w-[700px] h-[500px] sm:h-[700px] rounded-full blur-[90px] sm:blur-[120px] bg-amber-500/30 ${
             shouldAnimate ? 'animate-aurora-blob-1' : ''
           }`}
           style={{ willChange: shouldAnimate ? 'transform' : 'auto' }}
         />
         <div
-          className={`absolute top-[20%] -right-24 w-[420px] sm:w-[620px] h-[420px] sm:h-[620px] rounded-full blur-[110px] sm:blur-[150px] opacity-25 bg-orange-500/40 ${
+          className={`absolute top-[20%] -right-24 w-[450px] sm:w-[650px] h-[450px] sm:h-[650px] rounded-full blur-[90px] sm:blur-[130px] bg-orange-500/25 ${
             shouldAnimate ? 'animate-aurora-blob-2' : ''
           }`}
           style={{ willChange: shouldAnimate ? 'transform' : 'auto' }}
         />
         <div
-          className={`absolute -bottom-24 left-[20%] w-[500px] sm:w-[700px] h-[500px] sm:h-[700px] rounded-full blur-[120px] sm:blur-[160px] opacity-20 bg-yellow-600/35 ${
+          className={`absolute -bottom-24 left-[15%] w-[500px] sm:w-[720px] h-[500px] sm:h-[720px] rounded-full blur-[100px] sm:blur-[140px] bg-yellow-600/20 ${
             shouldAnimate ? 'animate-aurora-blob-3' : ''
           }`}
           style={{ willChange: shouldAnimate ? 'transform' : 'auto' }}
@@ -80,23 +79,23 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
 
       {/* 3. Overloaded mood layer (Warm Red & Rose) */}
       <div
-        className="absolute inset-0 transition-opacity duration-1200 ease-[cubic-bezier(0.22,1,0.36,1)]"
-        style={{ opacity: mood === 'overloaded' ? 0.95 : 0 }}
+        className="absolute inset-0 transition-opacity duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)]"
+        style={{ opacity: mood === 'overloaded' ? 1 : 0 }}
       >
         <div
-          className={`absolute -top-32 -left-20 w-[480px] sm:w-[680px] h-[480px] sm:h-[680px] rounded-full blur-[100px] sm:blur-[140px] opacity-35 bg-red-600/45 ${
+          className={`absolute -top-32 -left-20 w-[500px] sm:w-[700px] h-[500px] sm:h-[700px] rounded-full blur-[90px] sm:blur-[120px] bg-rose-600/35 ${
             shouldAnimate ? 'animate-aurora-blob-1' : ''
           }`}
           style={{ willChange: shouldAnimate ? 'transform' : 'auto' }}
         />
         <div
-          className={`absolute top-[20%] -right-24 w-[420px] sm:w-[620px] h-[420px] sm:h-[620px] rounded-full blur-[110px] sm:blur-[150px] opacity-30 bg-rose-600/40 ${
+          className={`absolute top-[20%] -right-24 w-[450px] sm:w-[650px] h-[450px] sm:h-[650px] rounded-full blur-[90px] sm:blur-[130px] bg-red-600/30 ${
             shouldAnimate ? 'animate-aurora-blob-2' : ''
           }`}
           style={{ willChange: shouldAnimate ? 'transform' : 'auto' }}
         />
         <div
-          className={`absolute -bottom-24 left-[20%] w-[500px] sm:w-[700px] h-[500px] sm:h-[700px] rounded-full blur-[120px] sm:blur-[160px] opacity-25 bg-amber-700/35 ${
+          className={`absolute -bottom-24 left-[15%] w-[500px] sm:w-[720px] h-[500px] sm:h-[720px] rounded-full blur-[100px] sm:blur-[140px] bg-orange-700/25 ${
             shouldAnimate ? 'animate-aurora-blob-3' : ''
           }`}
           style={{ willChange: shouldAnimate ? 'transform' : 'auto' }}

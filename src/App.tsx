@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { MotionConfig, LazyMotion, domAnimation, AnimatePresence, m } from 'motion/react';
+import { MotionConfig, LazyMotion, domMax, AnimatePresence, m } from 'motion/react';
 import { AuroraBackground } from './components/AuroraBackground';
 import { FloatingNav, ActiveTab } from './components/FloatingNav';
 import { HeroCarousel } from './components/HeroCarousel';
@@ -33,7 +33,8 @@ import { getWorkloadMood } from './utils/mood';
 import { isSampleTaskSet, isSampleBannerDismissed, dismissSampleBanner } from './utils/sampleDetection';
 import { generateTourDemoTasks } from './utils/tour';
 import { Task, Priority, TaskCategory } from './types';
-import { AlertTriangle, Compass } from 'lucide-react';
+import { AlertTriangle, Compass, CheckCircle2 } from 'lucide-react';
+import { Glass } from './components/ui/Glass';
 
 export function App() {
   const {
@@ -300,139 +301,172 @@ export function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <LazyMotion features={domAnimation}>
-        <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans selection:bg-orange-500 selection:text-black antialiased relative overflow-x-hidden">
+      <LazyMotion features={domMax}>
+        <div className="min-h-screen text-zinc-100 font-sans selection:bg-orange-500 selection:text-black antialiased relative overflow-x-hidden">
           {/* Animated 3-blob aurora background with grain & 1.2s cross-fading mood layers */}
           <AuroraBackground mood={workloadMood} reduceEffects={reduceEffects} />
 
-          {/* Floating Navigation (Desktop top-right glass pill + Mobile bottom bar + Animated settings) */}
-          <FloatingNav
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-            onOpenAsk={() => setIsAskModalOpen(true)}
-            onOpenCapacity={() => setIsCapacityModalOpen(true)}
-            onOpenImport={() => setIsImportModalOpen(true)}
-            onOpenResetWeek={() => setIsResetWeekModalOpen(true)}
-            onTakeTour={() => setIsTourActive(true)}
-            onLoadDemoData={resetToSampleTasks}
-            onClearEverything={() => setIsClearConfirmOpen(true)}
-            reduceEffects={reduceEffects}
-            onToggleReduceEffects={toggleReduceEffects}
-            onOpenAddTask={handleOpenAddModal}
-          />
+          <div className="relative z-10 flex flex-col min-h-screen">
+            {/* Floating Navigation (Desktop top-right glass pill + Mobile bottom bar + Animated settings) */}
+            <FloatingNav
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              onOpenAsk={() => setIsAskModalOpen(true)}
+              onOpenCapacity={() => setIsCapacityModalOpen(true)}
+              onOpenImport={() => setIsImportModalOpen(true)}
+              onOpenResetWeek={() => setIsResetWeekModalOpen(true)}
+              onTakeTour={() => setIsTourActive(true)}
+              onLoadDemoData={resetToSampleTasks}
+              onClearEverything={() => setIsClearConfirmOpen(true)}
+              reduceEffects={reduceEffects}
+              onToggleReduceEffects={toggleReduceEffects}
+              onOpenAddTask={handleOpenAddModal}
+            />
 
-          {/* Main Content Area */}
-          <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-24 sm:pb-12 relative z-10">
-            {/* Tour Mode Indicator Badge */}
-            {isTourActive && (
-              <div className="flex items-center justify-center mb-6 animate-fade-in">
-                <div className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-medium">
-                  <Compass className="w-3.5 h-3.5" />
-                  <span>Tour mode — viewing preview data</span>
+            {/* Main Content Area */}
+            <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 pb-24 sm:pb-12 flex-1 w-full">
+              {/* Tour Mode Indicator Badge */}
+              {isTourActive && (
+                <div className="flex items-center justify-center mb-6 animate-fade-in">
+                  <div className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-medium">
+                    <Compass className="w-3.5 h-3.5" />
+                    <span>Tour mode — viewing preview data</span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Optional Demo Tasks Detection Banner */}
-            {showDemoBanner && (
-              <div className="mb-6">
-                <DemoTaskBanner
-                  onClear={handleClearDemoTasks}
-                  onKeep={handleKeepDemoTasks}
-                />
-              </div>
-            )}
-
-            {/* Animated Tab View Switching with cross-fade & slight vertical slide */}
-            <AnimatePresence mode="wait">
-              {activeTab === 'today' && (
-                <m.div
-                  key="today-view"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                  className="space-y-6 sm:space-y-8"
-                >
-                  {/* Welcome Greeting Banner (Glass style) */}
-                  <WelcomeGreeting
-                    facts={appFacts}
-                    now={currentTime}
-                    onAction={handleGreetingAction}
+              {/* Optional Demo Tasks Detection Banner */}
+              {showDemoBanner && (
+                <div className="mb-6">
+                  <DemoTaskBanner
+                    onClear={handleClearDemoTasks}
+                    onKeep={handleKeepDemoTasks}
                   />
+                </div>
+              )}
 
-                  {displayTasks.length === 0 ? (
-                    <EmptyState
-                      onOpenAddTask={handleOpenAddModal}
-                      onOpenImport={() => setIsImportModalOpen(true)}
-                      onTakeTour={() => setIsTourActive(true)}
+              {/* Animated Tab View Switching with cross-fade & slight vertical slide */}
+              <AnimatePresence mode="wait">
+                {activeTab === 'today' && (
+                  <m.div
+                    key="today-view"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                    className="space-y-6 sm:space-y-8"
+                  >
+                    {/* Welcome Greeting Banner (Glass style) */}
+                    <WelcomeGreeting
+                      facts={appFacts}
+                      now={currentTime}
+                      onAction={handleGreetingAction}
                     />
-                  ) : (
-                    <>
-                      {/* Hero Carousel: Top 3 ranked tasks as slides with condensed type, timer controls, details */}
-                      <section aria-label="Top priority assignments">
-                        <HeroCarousel
-                          recommendations={heroRecommendations}
-                          stopwatch={{
-                            status: stopwatch.status,
-                            displayElapsedMs: stopwatch.displayElapsedMs,
-                            formattedTime: stopwatch.formattedTime,
-                            start: () => {
-                              if (topRecommendation?.task) {
-                                stopwatch.setSelectedTaskId(topRecommendation.task.id);
-                              }
-                              stopwatch.start();
-                            },
-                            pause: stopwatch.pause,
-                            resume: stopwatch.resume,
-                            stop: stopwatch.stop,
-                            saveSession: stopwatch.saveSession,
-                            resetToIdle: stopwatch.resetToIdle,
-                            selectedTaskId: stopwatch.selectedTaskId,
-                            setSelectedTaskId: stopwatch.setSelectedTaskId,
-                            isSaved: stopwatch.isSaved,
-                          }}
-                          onComplete={toggleComplete}
-                          onNotToday={handleNotToday}
-                          onEmailInstructor={(task) => setEmailTaskTarget(task)}
-                          catchUpCount={catchUpQueue.length}
-                          onOpenCatchUp={() => setIsCatchUpModalOpen(true)}
-                        />
-                      </section>
 
-                      {/* Horizontal Task Rails (Keep going, Due soon, Catch up) */}
-                      <TaskRail
-                        title="Keep Going"
-                        subtitle="Resume where you left off"
-                        tasks={keepGoingTasks}
-                        sessions={stopwatch.savedSessions}
-                        onSelectTask={handleStartNow}
-                        onStartTask={handleStartNow}
+                    {displayTasks.length === 0 ? (
+                      <EmptyState
+                        onOpenAddTask={handleOpenAddModal}
+                        onOpenImport={() => setIsImportModalOpen(true)}
+                        onTakeTour={() => setIsTourActive(true)}
                       />
+                    ) : heroRecommendations.length === 0 && keepGoingTasks.length === 0 && dueSoonTasks.length === 0 && catchUpTasks.length === 0 ? (
+                      <div className="py-12 px-4">
+                        <Glass className="p-8 sm:p-12 text-center max-w-md mx-auto space-y-4">
+                          <div className="w-14 h-14 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400">
+                            <CheckCircle2 className="w-7 h-7" />
+                          </div>
+                          <h2 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">
+                            All caught up!
+                          </h2>
+                          <p className="text-sm text-zinc-300 leading-relaxed max-w-sm mx-auto">
+                            You have no pending deadlines or active tasks right now. Check your weekly forecast or add new assignments.
+                          </p>
+                          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                            <button
+                              type="button"
+                              onClick={() => handleTabChange('tasks')}
+                              className="px-4 py-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-medium text-white transition-colors cursor-pointer"
+                            >
+                              View all coursework
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleOpenAddModal}
+                              className="px-4 py-2 rounded-full bg-orange-500 hover:bg-orange-400 text-xs font-semibold text-black transition-colors cursor-pointer"
+                            >
+                              Add a task
+                            </button>
+                          </div>
+                        </Glass>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Hero Carousel: Top 3 ranked tasks as slides with condensed type, timer controls, details */}
+                        {heroRecommendations.length > 0 && (
+                          <section aria-label="Top priority assignments">
+                            <HeroCarousel
+                              recommendations={heroRecommendations}
+                              stopwatch={{
+                                status: stopwatch.status,
+                                displayElapsedMs: stopwatch.displayElapsedMs,
+                                formattedTime: stopwatch.formattedTime,
+                                start: () => {
+                                  if (topRecommendation?.task) {
+                                    stopwatch.setSelectedTaskId(topRecommendation.task.id);
+                                  }
+                                  stopwatch.start();
+                                },
+                                pause: stopwatch.pause,
+                                resume: stopwatch.resume,
+                                stop: stopwatch.stop,
+                                saveSession: stopwatch.saveSession,
+                                resetToIdle: stopwatch.resetToIdle,
+                                selectedTaskId: stopwatch.selectedTaskId,
+                                setSelectedTaskId: stopwatch.setSelectedTaskId,
+                                isSaved: stopwatch.isSaved,
+                              }}
+                              onComplete={toggleComplete}
+                              onNotToday={handleNotToday}
+                              onEmailInstructor={(task) => setEmailTaskTarget(task)}
+                              catchUpCount={catchUpQueue.length}
+                              onOpenCatchUp={() => setIsCatchUpModalOpen(true)}
+                            />
+                          </section>
+                        )}
 
-                      <TaskRail
-                        title="Due Soon"
-                        subtitle="Next 48 hours"
-                        tasks={dueSoonTasks}
-                        sessions={stopwatch.savedSessions}
-                        onSelectTask={handleStartNow}
-                        onStartTask={handleStartNow}
-                      />
-
-                      {catchUpTasks.length > 0 && (
+                        {/* Horizontal Task Rails (Keep going, Due soon, Catch up) */}
                         <TaskRail
-                          title="Catch Up"
-                          subtitle="Overdue items needing resolution"
-                          tasks={catchUpTasks}
+                          title="Keep Going"
+                          subtitle="Resume where you left off"
+                          tasks={keepGoingTasks}
                           sessions={stopwatch.savedSessions}
                           onSelectTask={handleStartNow}
                           onStartTask={handleStartNow}
                         />
-                      )}
-                    </>
-                  )}
-                </m.div>
-              )}
+
+                        <TaskRail
+                          title="Due Soon"
+                          subtitle="Next 48 hours"
+                          tasks={dueSoonTasks}
+                          sessions={stopwatch.savedSessions}
+                          onSelectTask={handleStartNow}
+                          onStartTask={handleStartNow}
+                        />
+
+                        {catchUpTasks.length > 0 && (
+                          <TaskRail
+                            title="Catch Up"
+                            subtitle="Overdue items needing resolution"
+                            tasks={catchUpTasks}
+                            sessions={stopwatch.savedSessions}
+                            onSelectTask={handleStartNow}
+                            onStartTask={handleStartNow}
+                          />
+                        )}
+                      </>
+                    )}
+                  </m.div>
+                )}
 
               {activeTab === 'week' && (
                 <m.div
@@ -477,6 +511,7 @@ export function App() {
               )}
             </AnimatePresence>
           </main>
+        </div>
 
           {/* Floating Mini-Timer Bar (Visible when timer is active or paused) */}
           <MiniTimerBar

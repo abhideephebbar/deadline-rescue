@@ -69,8 +69,8 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
   return (
     <>
       {/* Top Header Row (Logo Left, Floating Glass Pill Right) */}
-      <header className="sticky top-0 z-30 pt-4 pb-2 px-5 sm:px-6 pointer-events-none">
-        <div className="max-w-5xl mx-auto flex items-center justify-between pointer-events-auto">
+      <header className="sticky top-0 z-30 pt-4 pb-2 px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
           {/* Logo Left */}
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-xl bg-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
@@ -412,3 +412,4 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
     </>
   );
 };
+
