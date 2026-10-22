@@ -53,6 +53,12 @@ npm test
    - Safe local storage schema versioning and seamless migration (`v1` to `v2`).
    - Clear explainable rationale in supportive, non-scolding language.
 
+3. **Student Capacity & Working Hours Buffer**:
+   - Replaces naive wall-clock time with an **available working hours buffer** that counts only actual focus study hours before each deadline.
+   - Configurable daily focus hours per day of week (defaults to 4h/day weekdays, 5h/day weekends with zero setup required).
+   - Blocked recovery & academic windows (sleep from 11 PM to 7 AM, classes from 9 AM to 3 PM) prevent unrealistic buffer assumptions.
+   - Real-time daily **Demand vs Capacity Balance** monitor flags overloaded and filling-up days.
+
 3. **Task Management & Form Validation**:
    - Add and edit assignments with title, course code (e.g., `CS 350`), category (assignment, lab, exam, quiz, etc.), due date & time, estimated effort (hours), priority, and notes.
    - Real-time form validation with inline feedback.

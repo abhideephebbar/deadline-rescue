@@ -1,4 +1,4 @@
-import { Task, Recommendation, Priority } from '../types';
+import { Task, Recommendation, Priority, CapacitySettings } from '../types';
 import { getUrgencyInfo, formatRelativeTime } from './date';
 
 export const PRIORITY_WEIGHTS: Record<Priority, number> = {
@@ -51,7 +51,8 @@ export function calculateRisk(remainingEffort: number, hoursRemaining: number): 
 export function calculateTaskScore(
   task: Task,
   now: Date = new Date(),
-  remainingEffortOverride?: number
+  remainingEffortOverride?: number,
+  capacitySettings?: CapacitySettings
 ): {
   score: number;
   risk: number;
@@ -64,12 +65,16 @@ export function calculateTaskScore(
     ? Math.max(0, remainingEffortOverride)
     : Math.max(0, task.estimatedHours);
 
-  const urgency = getUrgencyInfo(task.dueDateTime, effort, now);
+  const urgency = getUrgencyInfo(task.dueDateTime, effort, now, capacitySettings);
   const priorityWeight = PRIORITY_WEIGHTS[task.priority] || 1.0;
   const hoursRemaining = urgency.hoursRemaining;
   const buffer = urgency.bufferHours;
 
-  const risk = calculateRisk(effort, hoursRemaining);
+  const effectiveAvailableHours = urgency.isOverdue
+    ? hoursRemaining
+    : Math.max(0, urgency.availableWorkingHours);
+
+  const risk = calculateRisk(effort, effectiveAvailableHours);
   const rawScore = priorityWeight * risk * 1000;
   const score = Math.round(rawScore);
 
@@ -143,7 +148,8 @@ export function calculateTaskScore(
 export function getSmartRecommendations(
   tasks: Task[],
   now: Date = new Date(),
-  remainingEffortMap?: Record<string, number>
+  remainingEffortMap?: Record<string, number>,
+  capacitySettings?: CapacitySettings
 ): {
   topRecommendation: Recommendation | null;
   rankedQueue: Recommendation[];
@@ -156,9 +162,9 @@ export function getSmartRecommendations(
 
   const recommendations: Recommendation[] = incompleteTasks.map((task) => {
     const remainingEffort = remainingEffortMap ? remainingEffortMap[task.id] : undefined;
-    const analysis = calculateTaskScore(task, now, remainingEffort);
+    const analysis = calculateTaskScore(task, now, remainingEffort, capacitySettings);
     const effort = typeof remainingEffort === 'number' ? remainingEffort : task.estimatedHours;
-    const urgency = getUrgencyInfo(task.dueDateTime, effort, now);
+    const urgency = getUrgencyInfo(task.dueDateTime, effort, now, capacitySettings);
 
     return {
       task,

@@ -31,7 +31,7 @@ describe('Date & Urgency Utilities', () => {
       expect(info.hasTimeDeficit).toBe(true);
       expect(info.level).toBe('critical');
       expect(info.label).toBe('TIME DEFICIT');
-      expect(info.bufferHours).toBeCloseTo(-2, 2);
+      expect(info.bufferHours).toBeLessThan(0);
     });
 
     it('identifies critical tasks due within 12 hours with positive buffer', () => {

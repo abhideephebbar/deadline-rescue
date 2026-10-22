@@ -8,7 +8,7 @@ import {
   AlertTriangle,
   Zap
 } from 'lucide-react';
-import { Task } from '../types';
+import { Task, CapacitySettings } from '../types';
 import { getUrgencyInfo } from '../utils/date';
 
 interface TaskCardProps {
@@ -18,6 +18,7 @@ interface TaskCardProps {
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   now?: Date;
+  capacitySettings?: CapacitySettings;
 }
 
 export const TaskCard: React.FC<TaskCardProps> = ({
@@ -27,8 +28,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onEdit,
   onDelete,
   now = new Date(),
+  capacitySettings,
 }) => {
-  const urgency = getUrgencyInfo(task.dueDateTime, task.estimatedHours, now);
+  const urgency = getUrgencyInfo(task.dueDateTime, task.estimatedHours, now, capacitySettings);
 
   // Technical priority color styles
   const priorityBadgeStyles: Record<string, string> = {

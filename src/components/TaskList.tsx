@@ -4,7 +4,7 @@ import {
   SlidersHorizontal, 
   RotateCcw
 } from 'lucide-react';
-import { Task, TaskFilter, TaskSort } from '../types';
+import { Task, TaskFilter, TaskSort, CapacitySettings } from '../types';
 import { TaskCard } from './TaskCard';
 import { getUrgencyInfo } from '../utils/date';
 import { calculateTaskScore } from '../utils/ranking';
@@ -18,6 +18,7 @@ interface TaskListProps {
   onOpenAddTask: () => void;
   onResetSamples: () => void;
   now?: Date;
+  capacitySettings?: CapacitySettings;
 }
 
 export const TaskList: React.FC<TaskListProps> = ({
@@ -28,6 +29,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   onOpenAddTask,
   onResetSamples,
   now = new Date(),
+  capacitySettings,
 }) => {
   const [filter, setFilter] = useState<TaskFilter>('all');
   const [selectedCourse, setSelectedCourse] = useState<string>('all');
@@ -71,7 +73,7 @@ export const TaskList: React.FC<TaskListProps> = ({
       if (filter === 'active') return !task.completed;
       if (filter === 'completed') return task.completed;
 
-      const urgency = getUrgencyInfo(task.dueDateTime, task.estimatedHours, now);
+      const urgency = getUrgencyInfo(task.dueDateTime, task.estimatedHours, now, capacitySettings);
       if (filter === 'overdue') return !task.completed && urgency.isOverdue;
       if (filter === 'due-today') return !task.completed && urgency.hoursRemaining <= 24 && !urgency.isOverdue;
 
@@ -82,8 +84,8 @@ export const TaskList: React.FC<TaskListProps> = ({
       }
 
       if (sortBy === 'smart') {
-        const scoreA = calculateTaskScore(a, now).score;
-        const scoreB = calculateTaskScore(b, now).score;
+        const scoreA = calculateTaskScore(a, now, undefined, capacitySettings).score;
+        const scoreB = calculateTaskScore(b, now, undefined, capacitySettings).score;
         return scoreB - scoreA;
       }
 
@@ -105,7 +107,7 @@ export const TaskList: React.FC<TaskListProps> = ({
 
       return 0;
     });
-  }, [tasks, filter, selectedCourse, searchQuery, sortBy, now]);
+  }, [tasks, filter, selectedCourse, searchQuery, sortBy, now, capacitySettings]);
 
   const activeCount = tasks.filter((t) => !t.completed).length;
   const completedCount = tasks.filter((t) => t.completed).length;
@@ -232,6 +234,7 @@ export const TaskList: React.FC<TaskListProps> = ({
               onEdit={onEdit}
               onDelete={onDelete}
               now={now}
+              capacitySettings={capacitySettings}
             />
           ))}
         </div>

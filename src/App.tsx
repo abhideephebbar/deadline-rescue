@@ -5,6 +5,7 @@ import { SmartRecommendationCard } from './components/SmartRecommendationCard';
 import { TaskList } from './components/TaskList';
 import { TaskFormModal } from './components/TaskFormModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
+import { CapacitySettingsModal } from './components/CapacitySettingsModal';
 import { Stopwatch } from './components/Stopwatch';
 import { SideNav } from './components/SideNav';
 import { AnimatedNoise } from './components/AnimatedNoise';
@@ -12,6 +13,7 @@ import { SplitFlapText, SplitFlapAudioProvider } from './components/SplitFlapTex
 import { ScrambleTextOnHover } from './components/ScrambleText';
 import { BitmapChevron } from './components/BitmapChevron';
 import { useTasks } from './hooks/useTasks';
+import { useCapacity } from './hooks/useCapacity';
 import { Task, Priority, TaskCategory } from './types';
 import { Plus } from 'lucide-react';
 
@@ -26,7 +28,17 @@ export function App() {
     clearAllTasks,
   } = useTasks();
 
+  const {
+    settings: capacitySettings,
+    totalWeeklyCapacityHours,
+    updateDailyHours,
+    addBlockedSlot,
+    removeBlockedSlot,
+    resetToDefaults: resetCapacityDefaults,
+  } = useCapacity();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCapacityModalOpen, setIsCapacityModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
 
@@ -80,6 +92,8 @@ export function App() {
         <Header
           onOpenAddTask={handleOpenAddModal}
           onResetSamples={resetToSampleTasks}
+          onOpenCapacitySettings={() => setIsCapacityModalOpen(true)}
+          totalWeeklyCapacityHours={totalWeeklyCapacityHours}
         />
 
         {/* Main Content Area (offset by side rail on desktop) */}
@@ -159,12 +173,18 @@ export function App() {
               tasks={tasks}
               onToggleComplete={toggleComplete}
               now={currentTime}
+              capacitySettings={capacitySettings}
             />
           </section>
 
           {/* Section 02: Telemetry Statistics */}
           <section aria-label="Telemetry Statistics">
-            <DashboardStats tasks={tasks} now={currentTime} />
+            <DashboardStats
+              tasks={tasks}
+              now={currentTime}
+              capacitySettings={capacitySettings}
+              onOpenCapacitySettings={() => setIsCapacityModalOpen(true)}
+            />
           </section>
 
           {/* Section 03: Stopwatch Feature */}
@@ -180,6 +200,7 @@ export function App() {
               onOpenAddTask={handleOpenAddModal}
               onResetSamples={resetToSampleTasks}
               now={currentTime}
+              capacitySettings={capacitySettings}
             />
           </section>
 
@@ -236,6 +257,19 @@ export function App() {
             }
           }}
           taskTitle={candidateTask ? candidateTask.title : ''}
+        />
+
+        {/* Capacity Settings Modal */}
+        <CapacitySettingsModal
+          isOpen={isCapacityModalOpen}
+          onClose={() => setIsCapacityModalOpen(false)}
+          settings={capacitySettings}
+          onUpdateDailyHours={updateDailyHours}
+          onAddBlockedSlot={addBlockedSlot}
+          onRemoveBlockedSlot={removeBlockedSlot}
+          onResetDefaults={resetCapacityDefaults}
+          tasks={tasks}
+          now={currentTime}
         />
       </div>
     </SplitFlapAudioProvider>

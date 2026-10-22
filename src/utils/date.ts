@@ -1,19 +1,32 @@
-import { UrgencyInfo, UrgencyLevel } from '../types';
+import { UrgencyInfo, UrgencyLevel, CapacitySettings } from '../types';
+import { getAvailableWorkingHours } from './capacity';
 
 /**
  * Calculates detailed urgency information based on due date and estimated hours.
- * Accepts an optional reference `now` timestamp for deterministic calculations and live ticking.
+ * Counts user available working hours before deadline instead of raw wall-clock time.
+ * Accepts an optional reference `now` timestamp and capacity settings.
  */
 export function getUrgencyInfo(
   dueDateTimeStr: string,
   estimatedHours: number = 1,
-  now: Date = new Date()
+  now: Date = new Date(),
+  capacitySettings?: CapacitySettings
 ): UrgencyInfo {
   const dueDate = new Date(dueDateTimeStr);
   const diffMs = dueDate.getTime() - now.getTime();
   const hoursRemaining = diffMs / (1000 * 60 * 60);
   const isOverdue = hoursRemaining < 0;
-  const bufferHours = hoursRemaining - estimatedHours;
+
+  // Available working hours before deadline based on user schedule & daily capacity
+  const availableWorkingHours = isOverdue
+    ? 0
+    : getAvailableWorkingHours(now, dueDate, capacitySettings);
+
+  // Available-hours buffer: working hours minus required effort
+  const bufferHours = isOverdue
+    ? hoursRemaining - estimatedHours
+    : availableWorkingHours - estimatedHours;
+
   const hasTimeDeficit = !isOverdue && bufferHours < 0;
 
   let level: UrgencyLevel;
@@ -54,6 +67,7 @@ export function getUrgencyInfo(
     badgeClass,
     borderClass,
     hoursRemaining,
+    availableWorkingHours,
     relativeTime: formatRelativeTime(hoursRemaining),
     formattedDate: formatReadableDate(dueDate),
     isOverdue,

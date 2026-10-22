@@ -1,6 +1,6 @@
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
 
-export type TaskCategory = 'assignment' | 'exam' | 'project' | 'reading' | 'quiz' | 'other';
+export type TaskCategory = 'assignment' | 'exam' | 'project' | 'reading' | 'quiz' | 'lab' | 'other';
 
 export type UrgencyLevel = 'overdue' | 'critical' | 'urgent' | 'upcoming' | 'relaxed';
 
@@ -25,11 +25,38 @@ export interface UrgencyInfo {
   badgeClass: string;
   borderClass: string;
   hoursRemaining: number;
+  availableWorkingHours: number;
   relativeTime: string;
   formattedDate: string;
   isOverdue: boolean;
-  bufferHours: number; // hoursRemaining - estimatedHours
+  bufferHours: number; // availableWorkingHours - estimatedHours (or wall-clock buffer)
   hasTimeDeficit: boolean;
+}
+
+export type DayOfWeek = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
+export interface BlockedTimeSlot {
+  id: string;
+  label: string;
+  startHour: number; // 0 - 23
+  endHour: number; // 0 - 24
+  days: DayOfWeek[];
+}
+
+export interface CapacitySettings {
+  dailyWorkHours: Record<DayOfWeek, number>;
+  blockedSlots: BlockedTimeSlot[];
+}
+
+export interface DailyLoadMetric {
+  dateStr: string; // YYYY-MM-DD
+  dayLabel: string; // e.g., "Mon 24"
+  dayOfWeek: DayOfWeek;
+  capacityHours: number;
+  demandHours: number;
+  remainingCapacity: number;
+  status: 'clear' | 'filling' | 'overloaded';
+  taskIds: string[];
 }
 
 export interface Recommendation {

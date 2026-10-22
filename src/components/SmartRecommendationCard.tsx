@@ -9,7 +9,7 @@ import {
   AlertOctagon,
   Target
 } from 'lucide-react';
-import { Task } from '../types';
+import { Task, CapacitySettings } from '../types';
 import { getSmartRecommendations } from '../utils/ranking';
 import { ScrambleTextOnHover } from './ScrambleText';
 import { BitmapChevron } from './BitmapChevron';
@@ -18,15 +18,17 @@ interface SmartRecommendationCardProps {
   tasks: Task[];
   onToggleComplete: (id: string) => void;
   now?: Date;
+  capacitySettings?: CapacitySettings;
 }
 
 export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = ({
   tasks,
   onToggleComplete,
   now = new Date(),
+  capacitySettings,
 }) => {
   const [showFullQueue, setShowFullQueue] = useState(false);
-  const { topRecommendation, rankedQueue } = getSmartRecommendations(tasks, now);
+  const { topRecommendation, rankedQueue } = getSmartRecommendations(tasks, now, undefined, capacitySettings);
 
   // If no incomplete tasks
   if (!topRecommendation) {
@@ -161,7 +163,7 @@ export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = (
             <div className="flex items-center justify-between text-xs py-1 border-b border-white/5">
               <span className="text-zinc-500 flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5" />
-                <span>SAFETY BUFFER:</span>
+                <span>STUDY BUFFER:</span>
               </span>
               <span className={`font-semibold ${
                 urgency.hasTimeDeficit || urgency.isOverdue 
@@ -172,7 +174,19 @@ export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = (
               }`}>
                 {urgency.isOverdue 
                   ? '0H (OVERDUE)' 
-                  : `${urgency.bufferHours > 0 ? '+' : ''}${urgency.bufferHours.toFixed(1)}H`}
+                  : urgency.hasTimeDeficit
+                    ? `⚠️ ${Math.abs(urgency.bufferHours).toFixed(1)}H DEFICIT`
+                    : `+${urgency.bufferHours.toFixed(1)}H FOCUS`}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs py-1 border-b border-white/5">
+              <span className="text-zinc-500 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                <span>FOCUS CAPACITY:</span>
+              </span>
+              <span className="text-zinc-300 font-medium">
+                {urgency.availableWorkingHours.toFixed(1)}H AVAILABLE
               </span>
             </div>
 
