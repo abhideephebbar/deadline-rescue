@@ -93,3 +93,4 @@ describe('Stopwatch Integration & Real Remaining Effort', () => {
     expect(map['task-2']).toBe(2.0);
   });
 });
+

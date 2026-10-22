@@ -41,3 +41,4 @@ export function getRemainingEffortMap(tasks: Task[], sessions: StopwatchSession[
   }
   return map;
 }
+

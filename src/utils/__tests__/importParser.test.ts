@@ -101,3 +101,4 @@ describe('Paste-to-Import Rule-Based Parser', () => {
     expect(parseCourseworkText('    ')).toEqual([]);
   });
 });
+

@@ -231,3 +231,4 @@ export const InstructorEmailModal: React.FC<InstructorEmailModalProps> = ({
     </div>
   );
 };
+

@@ -88,3 +88,4 @@ describe('Triage Mode Generator', () => {
     expect(plan.disclaimer).toContain('not automated academic predictions');
   });
 });
+
