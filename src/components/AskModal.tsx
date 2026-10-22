@@ -5,6 +5,7 @@ import {
   processAskQuery,
   GroundedConfirmation,
   AskMessageHistoryItem,
+  FallbackReason,
 } from '../utils/askService';
 import { Modal } from './ui/Modal';
 
@@ -13,6 +14,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   text: string;
   source?: 'gemini' | 'rule-based';
+  fallbackReason?: FallbackReason;
   confirmation?: GroundedConfirmation;
   appliedNotice?: string;
   clarificationOptions?: Array<{ label: string; query: string }>;
@@ -119,6 +121,7 @@ export const AskModal: React.FC<AskModalProps> = ({
         role: 'assistant',
         text: answer.reply,
         source: answer.source,
+        fallbackReason: answer.fallbackReason,
         confirmation: answer.confirmation,
         clarificationOptions: answer.clarificationOptions,
         reasoning: answer.reasoning,
@@ -135,6 +138,7 @@ export const AskModal: React.FC<AskModalProps> = ({
           role: 'assistant',
           text: 'Sorry, I encountered an issue processing your request. Please try again.',
           source: 'rule-based',
+          fallbackReason: 'error',
         },
       ]);
     } finally {
@@ -174,6 +178,39 @@ export const AskModal: React.FC<AskModalProps> = ({
   const handleDismissConfirmation = (messageId: string) => {
     setMessages((prev) =>
       prev.map((m) => (m.id === messageId ? { ...m, confirmation: undefined } : m))
+    );
+  };
+
+  const renderSourceBadge = (source?: 'gemini' | 'rule-based', reason?: FallbackReason) => {
+    if (source === 'gemini') {
+      return (
+        <span
+          title="Powered by Gemini AI"
+          className="text-[10px] px-1.5 py-0.5 rounded border border-orange-500/30 bg-orange-500/10 text-orange-300 font-medium cursor-help"
+        >
+          ✦ AI
+        </span>
+      );
+    }
+
+    let tooltip = 'Offline mode: running with local rule engine';
+    if (reason === 'no_key') {
+      tooltip = 'Offline mode: GEMINI_API_KEY is not configured';
+    } else if (reason === 'model_unavailable') {
+      tooltip = 'Offline mode: AI service temporarily unavailable';
+    } else if (reason === 'rate_limited') {
+      tooltip = 'Offline mode: AI rate limit reached';
+    } else if (reason === 'error') {
+      tooltip = 'Offline mode: server error encountered';
+    }
+
+    return (
+      <span
+        title={tooltip}
+        className="text-[10px] px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-zinc-400 cursor-help"
+      >
+        Offline mode (limited)
+      </span>
     );
   };
 
@@ -221,19 +258,17 @@ export const AskModal: React.FC<AskModalProps> = ({
               ) : (
                 /* Assistant Bubble */
                 <div className="max-w-[92%] rounded-2xl rounded-tl-xs p-4 bg-[#1d1d21] border border-white/10 text-zinc-100 text-sm space-y-3 shadow-sm">
-                  {/* Top metadata badge */}
+                  {/* Top metadata badge with tooltip */}
                   <div className="flex items-center justify-between text-[11px] text-zinc-500 border-b border-white/5 pb-2">
                     <span className="font-medium text-zinc-400 flex items-center space-x-1.5">
                       <Sparkles className="w-3 h-3 text-orange-400" />
-                      <span>Deadline Rescue</span>
+                      <span>Rescue</span>
                     </span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-zinc-400">
-                      {msg.source === 'gemini' ? '✦ AI' : 'Offline mode (limited)'}
-                    </span>
+                    {renderSourceBadge(msg.source, msg.fallbackReason)}
                   </div>
 
                   {/* Message Text */}
-                  <p className="leading-relaxed text-zinc-100 text-sm font-sans">
+                  <p className="leading-relaxed text-zinc-100 text-sm font-sans whitespace-pre-line">
                     {msg.text}
                   </p>
 
@@ -358,7 +393,7 @@ export const AskModal: React.FC<AskModalProps> = ({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ask about your deadlines or study hours..."
+              placeholder="Ask Rescue about your deadlines or study hours..."
               className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-white/10 text-white placeholder-zinc-500 text-xs sm:text-sm focus:outline-none focus:border-orange-500 transition-colors"
             />
             <button
@@ -372,9 +407,12 @@ export const AskModal: React.FC<AskModalProps> = ({
           </form>
 
           {/* Privacy Notice */}
-          <div className="flex items-center justify-center space-x-1.5 text-[10px] text-zinc-500 pt-1">
-            <ShieldCheck className="w-3 h-3 text-zinc-400 shrink-0" />
-            <span>Grounded in your schedule. Data kept in-memory for this session only.</span>
+          <div className="flex flex-col items-center justify-center text-[10px] text-zinc-500 pt-1 space-y-0.5">
+            <div className="flex items-center space-x-1.5">
+              <ShieldCheck className="w-3 h-3 text-zinc-400 shrink-0" />
+              <span>To answer, your task titles and dates are sent to an AI service.</span>
+            </div>
+            <span>Data is processed in-memory for this session only.</span>
           </div>
         </div>
       </div>

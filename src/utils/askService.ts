@@ -4,6 +4,9 @@ import { calculateDailyLoads } from './capacity';
 import { simulateTaskDelay } from './forecast';
 import { parseCourseworkText } from './importParser';
 import { formatRelativeTime } from './date';
+import { buildAppFacts, AppFacts } from './facts';
+
+export type FallbackReason = 'no_key' | 'model_unavailable' | 'rate_limited' | 'error';
 
 export interface GroundedConfirmation {
   type: 'add_task' | 'set_capacity' | 'drop_task' | 'reschedule_task';
@@ -17,6 +20,7 @@ export interface GroundedAnswer {
   reply: string;
   reasoning?: string;
   source: 'gemini' | 'rule-based';
+  fallbackReason?: FallbackReason;
   confirmation?: GroundedConfirmation;
   clarificationOptions?: Array<{ label: string; query: string }>;
   suggestionChips?: string[];
@@ -41,8 +45,18 @@ const STOP_WORDS = new Set([
   'the', 'and', 'for', 'about', 'what', 'when', 'which', 'with', 'from',
   'this', 'that', 'have', 'only', 'will', 'should', 'could', 'would', 'does',
   'task', 'work', 'next', 'item', 'assignment', 'homework', 'please', 'can',
-  'how', 'why', 'are', 'you', 'was', 'were', 'our', 'out', 'all'
+  'how', 'why', 'are', 'you', 'was', 'were', 'our', 'out', 'all', 'record',
 ]);
+
+const ACRONYM_MAP: Record<string, string> = {
+  os: 'operating systems',
+  dbms: 'database',
+  algo: 'algorithms',
+  ds: 'data structures',
+  econ: 'economics',
+  stats: 'statistics',
+  calc: 'calculus',
+};
 
 const DAY_NAME_KEYS: Record<string, DayOfWeek> = {
   sunday: 'sun',
@@ -62,129 +76,40 @@ const DAY_NAME_KEYS: Record<string, DayOfWeek> = {
 };
 
 /**
- * Executes grounded client-side business logic for an assistant query.
- * Calls /api/ask with automatic fallback to offline rule-based classification.
- */
-export async function processAskQuery(
-  userQuery: string,
-  context: AskContextSnapshot
-): Promise<GroundedAnswer> {
-  const query = userQuery.trim();
-  if (!query) {
-    return {
-      reply: 'Please ask a question about your deadlines, study hours, or upcoming assignments.',
-      source: 'rule-based',
-      suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What should I do next?'],
-    };
-  }
-
-  // 1. Check local small-talk and conversational queries FIRST (zero network latency)
-  const localMatch = checkLocalSmallTalk(query, context);
-  if (localMatch) {
-    return localMatch;
-  }
-
-  let serverData: any = null;
-
-  // 2. Attempt serverless API call with rich grounding facts
-  try {
-    const compactTasks = context.tasks.map((t) => ({
-      id: t.id,
-      title: t.title,
-      course: t.course,
-      dueDateTime: t.dueDateTime,
-      estimatedHours: t.estimatedHours,
-      priority: t.priority,
-      category: t.category,
-    }));
-
-    const incomplete = context.tasks.filter((t) => !t.completed && !t.dropped);
-    const { topRecommendation, rankedQueue, catchUpQueue } = getSmartRecommendations(
-      context.tasks,
-      context.now,
-      context.remainingEffortMap,
-      context.capacitySettings
-    );
-
-    const weeklyLoads = calculateDailyLoads(incomplete, context.capacitySettings, context.now, 7);
-    const weeklyDemandHours = Math.round(weeklyLoads.reduce((a, b) => a + b.demandHours, 0) * 10) / 10;
-    const weeklyCapacityHours = Math.round(weeklyLoads.reduce((a, b) => a + b.capacityHours, 0) * 10) / 10;
-    const deficitHours = Math.max(0, Math.round((weeklyDemandHours - weeklyCapacityHours) * 10) / 10);
-
-    const tasksDue48h = incomplete
-      .filter((t) => {
-        const diffHours = (new Date(t.dueDateTime).getTime() - context.now.getTime()) / 3600000;
-        return diffHours >= 0 && diffHours <= 48;
-      })
-      .map((t) => ({ title: t.title, course: t.course }));
-
-    const res = await fetch('/api/ask', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: query,
-        snapshot: {
-          tasks: compactTasks,
-          now: context.now.toISOString(),
-          facts: {
-            topTask: topRecommendation?.task
-              ? {
-                  title: topRecommendation.task.title,
-                  course: topRecommendation.task.course,
-                  due: topRecommendation.task.dueDateTime,
-                  hours: topRecommendation.task.estimatedHours,
-                }
-              : null,
-            demandVsCapacity: { weeklyDemandHours, weeklyCapacityHours, deficitHours },
-            tasksDue48h,
-            catchUpCount: catchUpQueue.length,
-            nextUp: rankedQueue.slice(1, 4).map((r) => ({ title: r.task.title })),
-            history: context.history?.slice(-6) || [],
-          },
-        },
-      }),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      if (!data.fallbackToLocal) {
-        serverData = data;
-      }
-    }
-  } catch {
-    // Fall back to rule-based offline processing
-  }
-
-  // 3. If server responded with valid intent, ground it in real app calculations
-  if (serverData && serverData.intent) {
-    return groundIntent(serverData.intent, serverData.parameters, serverData.reply, context, 'gemini');
-  }
-
-  // 4. Otherwise, use offline rule-based intent parsing
-  const offline = classifyOfflineQuery(query, context);
-  return groundIntent(offline.intent, offline.parameters, offline.reply, context, 'rule-based');
-}
-
-/**
  * Handles fast local small talk and conversational queries without a network request.
  */
 export function checkLocalSmallTalk(
   query: string,
-  context: AskContextSnapshot
+  context: AskContextSnapshot,
+  facts?: AppFacts
 ): GroundedAnswer | null {
   const lower = query.toLowerCase().trim();
+  const appFacts = facts || buildAppFacts(context.tasks, context.capacitySettings, context.now, context.remainingEffortMap);
 
-  const incompleteTasks = context.tasks.filter((t) => !t.completed && !t.dropped);
-  const { topRecommendation } = getSmartRecommendations(
-    context.tasks,
-    context.now,
-    context.remainingEffortMap,
-    context.capacitySettings
-  );
+  // 1. Distress / Overwhelmed ("I'm so overwhelmed", "stressed", "swamped", "too much")
+  if (/\b(overwhelmed|stressed|swamped|too much|can't do this|burnout|panicking|freaking out)\b/i.test(lower)) {
+    if (appFacts.topTask) {
+      return {
+        reply: `Take a deep breath—having a packed week is really tough, but you don't have to tackle it all at once. Let's just focus on one small win: open your ${appFacts.topTask.title} (${appFacts.topTask.course}) and spend 10 minutes skimming the first problem. You've got this.`,
+        source: 'rule-based',
+        referencedTaskId: appFacts.topTask.id,
+        suggestionChips: [
+          `Start ${appFacts.topTask.title}`,
+          'What if I skip a task?',
+          'I only have 2 hours tonight',
+        ],
+      };
+    }
+    return {
+      reply: "Take a deep breath—you don't have any pending assignments scheduled right now. Take some time to rest and recharge!",
+      source: 'rule-based',
+      suggestionChips: ['Add a task', 'Paste my deadlines'],
+    };
+  }
 
-  // Greetings
+  // 2. Greetings
   if (/\b(hi|hello|hey|yo|howdy|greetings|good morning|good afternoon|good evening)\b/i.test(lower)) {
-    if (incompleteTasks.length === 0) {
+    if (appFacts.totalActiveCount === 0) {
       return {
         reply: "Hey! You don't have any tasks scheduled right now. Add an assignment or paste deadlines to get started.",
         source: 'rule-based',
@@ -192,22 +117,16 @@ export function checkLocalSmallTalk(
       };
     }
 
-    if (topRecommendation?.task) {
-      const hoursUntilDue = Math.round(
-        (new Date(topRecommendation.task.dueDateTime).getTime() - context.now.getTime()) / 3600000
-      );
-      const dueStr = formatRelativeTime(hoursUntilDue);
-      const dailyLoads = calculateDailyLoads(incompleteTasks, context.capacitySettings, context.now, 7);
-      const todayLoad = dailyLoads[0];
+    if (appFacts.topTask) {
       const todayStatus =
-        todayLoad && todayLoad.demandHours > todayLoad.capacityHours
-          ? `You have ~${todayLoad.demandHours}h planned against ${todayLoad.capacityHours}h capacity today.`
+        appFacts.today.deficitHours > 0
+          ? `You have ~${appFacts.today.demandHours}h planned against ${appFacts.today.capacityHours}h capacity today.`
           : 'You look on track today.';
 
       return {
-        reply: `Hey! Your top task is ${topRecommendation.task.title}, ${dueStr.toLowerCase()}. ${todayStatus}`,
+        reply: `Hey! Your top priority right now is ${appFacts.topTask.title}, ${appFacts.topTask.dueRelative.toLowerCase()}. ${todayStatus}`,
         source: 'rule-based',
-        referencedTaskId: topRecommendation.task.id,
+        referencedTaskId: appFacts.topTask.id,
         suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What should I do next?'],
       };
     }
@@ -219,7 +138,7 @@ export function checkLocalSmallTalk(
     };
   }
 
-  // Thanks / Gratitude
+  // 3. Thanks / Gratitude
   if (/\b(thanks|thank you|thx|appreciate it|thank u)\b/i.test(lower)) {
     return {
       reply: "You're welcome! Let me know if you need to adjust anything else.",
@@ -228,7 +147,7 @@ export function checkLocalSmallTalk(
     };
   }
 
-  // Affirmations
+  // 4. Affirmations
   if (/^((ok|okay|cool|sounds good|got it|great|perfect|awesome|bet|nice)\b[\s.!]*)+$/i.test(lower)) {
     return {
       reply: "Sounds good! I'm here whenever you want to check your deadlines or study hours.",
@@ -237,15 +156,13 @@ export function checkLocalSmallTalk(
     };
   }
 
-  // Capabilities / Help / What can you do
+  // 5. Capabilities / Help / What can you do
   if (/\b(help|what can you do|how do you work|how does this work|features|commands)\b/i.test(lower)) {
-    const totalHours = incompleteTasks.reduce((acc, t) => acc + t.estimatedHours, 0);
-    const topTitle = topRecommendation?.task ? `"${topRecommendation.task.title}"` : 'None';
-
+    const topTitle = appFacts.topTask ? `"${appFacts.topTask.title}"` : 'None';
     return {
-      reply: `I help you triage your deadlines and plan realistic study hours without guilt. Right now you have ${incompleteTasks.length} active assignments (~${totalHours}h total effort), with ${topTitle} as your top recommendation. You can ask me what to do next, update your focus hours, or simulate delaying a deadline.`,
+      reply: `I help you triage your deadlines and plan realistic study hours without guilt. Right now you have ${appFacts.totalActiveCount} active assignments (~${appFacts.totalActiveHours}h total effort), with ${topTitle} as your top recommendation. You can ask me what to do next, update your focus hours, or simulate delaying a deadline.`,
       source: 'rule-based',
-      referencedTaskId: topRecommendation?.task?.id,
+      referencedTaskId: appFacts.topTask?.id,
       suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What if I delay this task?'],
     };
   }
@@ -289,14 +206,14 @@ export function findMatchingTasks(query: string, tasks: Task[]): Task[] {
   const cleanLower = lower.replace(/[^a-z0-9\s]/g, ' ');
   const squishedQuery = lower.replace(/[^a-z0-9]/g, '');
 
-  // 1. Direct course match (e.g. "CS 350", "Math 220", "cs350")
+  // 1. Direct course match (e.g. "CS 350", "Math 220", "cs350", "DBMS")
   const courseMatches = incomplete.filter((t) => {
     if (!t.course) return false;
     const cLower = t.course.toLowerCase();
     const cSquished = cLower.replace(/[^a-z0-9]/g, '');
     return (
       cleanLower.includes(cLower) ||
-      (cSquished.length >= 3 && squishedQuery.includes(cSquished))
+      (cSquished.length >= 2 && squishedQuery.includes(cSquished))
     );
   });
   if (courseMatches.length > 0) {
@@ -312,20 +229,28 @@ export function findMatchingTasks(query: string, tasks: Task[]): Task[] {
     return titleSubstringMatches;
   }
 
-  // 3. Keyword token matching (words of length >= 3 not in STOP_WORDS)
-  const tokens = lower
+  // 3. Expand acronyms in query (e.g. "os" -> "operating systems", "dbms" -> "database")
+  const expandedTokens: string[] = [];
+  const rawTokens = lower
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
-    .filter((tok) => tok.length >= 3 && !STOP_WORDS.has(tok));
+    .filter((tok) => tok.length >= 2 && !STOP_WORDS.has(tok));
 
-  if (tokens.length === 0) return [];
+  for (const tok of rawTokens) {
+    expandedTokens.push(tok);
+    if (ACRONYM_MAP[tok]) {
+      ACRONYM_MAP[tok].split(' ').forEach((w) => expandedTokens.push(w));
+    }
+  }
+
+  if (expandedTokens.length === 0) return [];
 
   const scored = incomplete
     .map((t) => {
       const titleLower = t.title.toLowerCase();
       const courseLower = t.course.toLowerCase();
       let matchCount = 0;
-      for (const tok of tokens) {
+      for (const tok of expandedTokens) {
         if (titleLower.includes(tok) || courseLower.includes(tok)) {
           matchCount++;
         }
@@ -340,6 +265,63 @@ export function findMatchingTasks(query: string, tasks: Task[]): Task[] {
   }
 
   return [];
+}
+
+/**
+ * Resolves a task reference string from a tool call or user query into a concrete Task.
+ */
+export function resolveTaskRef(
+  taskRef: string | undefined,
+  context: AskContextSnapshot
+): { task?: Task; isAmbiguous?: boolean; candidates?: Task[]; notFound?: boolean } {
+  const incomplete = context.tasks.filter((t) => !t.completed && !t.dropped);
+  if (incomplete.length === 0) {
+    return { notFound: true, candidates: [] };
+  }
+
+  // 0. Check exact ID match first
+  if (taskRef) {
+    const byId = incomplete.find((t) => t.id === taskRef);
+    if (byId) {
+      return { task: byId };
+    }
+  }
+
+  // 1. If taskRef is missing, 'top', 'first', or refers to top recommendation
+  if (
+    !taskRef ||
+    taskRef.toLowerCase() === 'top' ||
+    taskRef.toLowerCase() === 'first' ||
+    taskRef.toLowerCase() === 'next'
+  ) {
+    const { topRecommendation } = getSmartRecommendations(
+      context.tasks,
+      context.now,
+      context.remainingEffortMap,
+      context.capacitySettings
+    );
+    if (topRecommendation?.task) {
+      return { task: topRecommendation.task };
+    }
+    return { task: incomplete[0] };
+  }
+
+  // 2. Check for pronoun reference from history
+  const pronounTask = resolvePronounTask(taskRef, context.history, context.tasks);
+  if (pronounTask) {
+    return { task: pronounTask };
+  }
+
+  // 3. Fuzzy search by title & course code
+  const matches = findMatchingTasks(taskRef, context.tasks);
+  if (matches.length === 1) {
+    return { task: matches[0] };
+  }
+  if (matches.length > 1) {
+    return { isAmbiguous: true, candidates: matches };
+  }
+
+  return { notFound: true, candidates: incomplete };
 }
 
 /**
@@ -397,7 +379,7 @@ export function classifyOfflineQuery(
     };
   }
 
-  // 1. Capacity setting ("I only have 2 hours", "have 3h tonight", "have 2 hours tomorrow")
+  // Capacity setting ("I only have 2 hours", "have 3h tonight", "have 2 hours tomorrow")
   const capacityMatch = lower.match(/(?:only have|have|got)\s+(\d+(?:\.\d+)?)\s*(?:hours|hrs|h)/i);
   if (capacityMatch) {
     const hours = parseFloat(capacityMatch[1]);
@@ -412,7 +394,7 @@ export function classifyOfflineQuery(
   // Check for pronoun reference from history
   const pronounTask = resolvePronounTask(query, context.history, context.tasks);
 
-  // 2. Explain ranking ("why is this top", "what should I do first", "why", "coursework questions")
+  // Explain ranking ("why is this top", "what should I do first", "why", "coursework questions")
   if (
     /\b(why|what should i do|top task|next up|do first|what's next|whats next)\b/i.test(lower)
   ) {
@@ -423,7 +405,7 @@ export function classifyOfflineQuery(
     };
   }
 
-  // 3. Skip or drop ("what if I skip", "drop lab", "can I skip", "let go")
+  // Skip or drop ("what if I skip", "drop lab", "can I skip", "let go")
   if (/\b(skip|drop|let go|forgive)\b/i.test(lower)) {
     if (pronounTask) {
       return {
@@ -472,7 +454,7 @@ export function classifyOfflineQuery(
     };
   }
 
-  // 4. Move or delay ("what if I move", "delay", "push back", "postpone")
+  // Move or delay ("what if I move", "delay", "push back", "postpone")
   if (/\b(move|delay|push back|postpone)\b/i.test(lower)) {
     const daysMatch = lower.match(/\b(\d+)\s*(?:days?|d)\b/i);
     const days = daysMatch ? parseInt(daysMatch[1], 10) : 1;
@@ -524,16 +506,23 @@ export function classifyOfflineQuery(
     };
   }
 
-  // 5. Add task ("add", "track", "due next", "due tomorrow")
+  // Add task ("add", "track", "due next", "due tomorrow")
   if (/^(add|track)\b/i.test(lower) || /\b(due next|due tomorrow|due on)\b/i.test(lower)) {
     const candidateTasks = parseCourseworkText(query, context.now);
     if (candidateTasks.length > 0) {
       const top = candidateTasks[0];
+      let course = top.course;
+      if (course === 'GENERAL') {
+        const uppercaseMatch = query.match(/\b([A-Z]{2,6})\b/);
+        if (uppercaseMatch && !['ADD', 'DUE', 'PM', 'AM'].includes(uppercaseMatch[1])) {
+          course = uppercaseMatch[1];
+        }
+      }
       return {
         intent: 'add_task',
         parameters: {
           title: top.title,
-          course: top.course,
+          course,
           dueDateTime: top.dueDateTime,
           estimatedHours: top.estimatedHours,
           priority: top.priority,
@@ -544,7 +533,7 @@ export function classifyOfflineQuery(
     }
   }
 
-  // 6. Off-topic essay or non-triage queries
+  // Off-topic essay or non-triage queries
   if (
     /\b(essay|write|code|solve|cheat|quiz answer|exam answer)\b/i.test(lower) &&
     !/\b(due|submit|hours|time|when)\b/i.test(lower)
@@ -556,7 +545,7 @@ export function classifyOfflineQuery(
     };
   }
 
-  // 7. Specific course questions ("What's due for CS 350?", "CS 350")
+  // Specific course questions ("What's due for CS 350?", "CS 350")
   const specificCourseMatches = findMatchingTasks(query, context.tasks);
   if (specificCourseMatches.length > 0) {
     if (specificCourseMatches.length === 1) {
@@ -579,7 +568,7 @@ export function classifyOfflineQuery(
     }
   }
 
-  // 8. Unknown input / gibberish fallback
+  // Unknown input / gibberish fallback
   return {
     intent: 'unknown',
     parameters: {},
@@ -588,83 +577,63 @@ export function classifyOfflineQuery(
 }
 
 /**
- * Computes numbers strictly using real app algorithms and generates confirmation cards.
+ * Grounds a tool call proposed by Gemini or offline parser in deterministic local logic.
  */
-export function groundIntent(
-  intent: string,
-  parameters: any,
-  rawReply: string,
+export function groundToolCall(
+  toolName: string,
+  args: Record<string, any>,
+  modelReply: string,
   context: AskContextSnapshot,
-  source: 'gemini' | 'rule-based'
+  source: 'gemini' | 'rule-based',
+  facts: AppFacts,
+  fallbackReason?: FallbackReason
 ): GroundedAnswer {
-  const incompleteTasks = context.tasks.filter((t) => !t.completed && !t.dropped);
-  const { topRecommendation } = getSmartRecommendations(
-    context.tasks,
-    context.now,
-    context.remainingEffortMap,
-    context.capacitySettings
-  );
-
-  switch (intent) {
-    case 'chat': {
-      return {
-        reply: rawReply || 'How can I help you manage your coursework today?',
-        source,
-        suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What if I delay my next deadline?'],
-      };
-    }
-
-    case 'clarify': {
-      const options = Array.isArray(parameters?.clarificationOptions)
-        ? parameters.clarificationOptions
-        : [];
-      return {
-        reply: rawReply || 'I found multiple matching assignments. Which one did you mean?',
-        source,
-        clarificationOptions: options,
-      };
-    }
-
-    case 'explain_ranking': {
-      let targetTask = topRecommendation?.task;
-      if (parameters?.taskId) {
-        const found = incompleteTasks.find((t) => t.id === parameters.taskId);
-        if (found) targetTask = found;
-      } else if (parameters?.taskTitle) {
-        const queryTitle = String(parameters.taskTitle).toLowerCase();
-        const found = incompleteTasks.find((t) => t.title.toLowerCase().includes(queryTitle));
-        if (found) targetTask = found;
+  switch (toolName) {
+    case 'explain_task': {
+      const resolution = resolveTaskRef(args.taskRef, context);
+      if (resolution.isAmbiguous && resolution.candidates) {
+        return {
+          reply: 'I found multiple matching assignments. Which one would you like to review?',
+          source,
+          fallbackReason,
+          clarificationOptions: resolution.candidates.map((m) => ({
+            label: `${m.course}: ${m.title}`,
+            query: `Why is ${m.title} prioritized?`,
+          })),
+        };
       }
 
+      const targetTask = resolution.task;
       if (!targetTask) {
         return {
-          reply: "You don't have any active tasks right now.",
+          reply: "You don't have any active assignments scheduled right now.",
           source,
+          fallbackReason,
           suggestionChips: ['Add a task', 'Paste deadlines'],
         };
       }
 
-      const remainingEffort = typeof context.remainingEffortMap?.[targetTask.id] === 'number'
-        ? context.remainingEffortMap[targetTask.id]
-        : targetTask.estimatedHours;
+      const remEffort =
+        typeof context.remainingEffortMap?.[targetTask.id] === 'number'
+          ? context.remainingEffortMap[targetTask.id]
+          : targetTask.estimatedHours;
       const scoreAnalysis = calculateTaskScore(
         targetTask,
         context.now,
-        remainingEffort,
+        remEffort,
         context.capacitySettings
       );
+      const hoursDiff = Math.round((new Date(targetTask.dueDateTime).getTime() - context.now.getTime()) / 3600000);
+      const dueStr = formatRelativeTime(hoursDiff);
 
-      const hoursRem = Math.round(
-        (new Date(targetTask.dueDateTime).getTime() - context.now.getTime()) / (1000 * 3600)
-      );
-
-      const reply = `"${targetTask.title}" (${targetTask.course}) is prioritized because it requires ~${remainingEffort}h of effort before ${formatRelativeTime(hoursRem)}.`;
-      const reasoning = scoreAnalysis.explanation;
+      // Client verifies plain language explanation grounded in facts
+      const verifiedReply = `"${targetTask.title}" (${targetTask.course}) is prioritized because it requires ~${remEffort}h of effort ${dueStr.toLowerCase()}.`;
 
       return {
-        reply,
-        reasoning,
+        reply: modelReply && !modelReply.includes('NaN') ? modelReply : verifiedReply,
+        reasoning: scoreAnalysis.explanation,
         source,
+        fallbackReason,
         referencedTaskId: targetTask.id,
         suggestionChips: [
           `What if I move ${targetTask.title} by 1 day?`,
@@ -674,90 +643,165 @@ export function groundIntent(
       };
     }
 
-    case 'set_today_capacity': {
-      const hours = Math.max(0.5, Math.min(16, Number(parameters?.hours) || 2));
-      const dayNames: DayOfWeek[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-      const targetDayKey: DayOfWeek = parameters?.dayKey || dayNames[context.now.getDay()];
-      const dayOffset = Number(parameters?.dayOffset) || 0;
+    case 'propose_add_task': {
+      const title = typeof args.title === 'string' ? args.title.trim() : 'New Assignment';
+      const course = typeof args.course === 'string' ? args.course.trim().toUpperCase() : 'GENERAL';
+      let dueDateTime = new Date(context.now.getTime() + 48 * 3600 * 1000).toISOString();
+      if (args.dueDateTime && !isNaN(new Date(args.dueDateTime).getTime())) {
+        dueDateTime = new Date(args.dueDateTime).toISOString();
+      }
+      const estimatedHours = Math.max(0.25, Math.min(40, Number(args.estimatedHours) || 2.0));
+      const priority = ['urgent', 'high', 'medium', 'low'].includes(args.priority)
+        ? args.priority
+        : 'medium';
+      const category = ['assignment', 'lab', 'project', 'reading', 'quiz', 'exam'].includes(args.category)
+        ? args.category
+        : 'assignment';
 
-      const currentCapacity = context.capacitySettings.dailyWorkHours[targetDayKey] || 4;
+      const taskData = {
+        title,
+        course,
+        dueDateTime,
+        estimatedHours,
+        priority,
+        category,
+        notes: typeof args.notes === 'string' ? args.notes : '',
+      };
+
+      const confirmation: GroundedConfirmation = {
+        type: 'add_task',
+        title: `Add "${title}" (${course})?`,
+        description: `Due ${formatRelativeTime(
+          Math.round((new Date(dueDateTime).getTime() - context.now.getTime()) / 3600000)
+        )}, ~${estimatedHours}h estimated effort.`,
+        payload: taskData,
+        confirmLabel: 'Add task',
+      };
+
+      return {
+        reply: modelReply || `Proposed adding "${title}" to your schedule.`,
+        source,
+        fallbackReason,
+        confirmation,
+        suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight'],
+      };
+    }
+
+    case 'propose_set_capacity': {
+      const hours = Math.max(0.5, Math.min(16, Number(args.hours) || 2));
+      const { dayKey, dayOffset } = parseTargetDay(String(args.day || 'today'), context.now);
+
+      const currentCapacity = context.capacitySettings.dailyWorkHours[dayKey] || 4;
       const dailyLoads = calculateDailyLoads(context.tasks, context.capacitySettings, context.now, 7);
       const targetDayLoad = dailyLoads[dayOffset] || dailyLoads[0];
       const demandHours = targetDayLoad?.demandHours || 0;
 
-      const dayLabel = dayOffset === 0 ? 'today' : dayOffset === 1 ? 'tomorrow' : targetDayKey.toUpperCase();
-      const reply = `If you have ${hours}h available ${dayLabel} (adjusted from ${currentCapacity}h), you have ~${demandHours}h of assignments planned.`;
+      const dayLabel = dayOffset === 0 ? 'today' : dayOffset === 1 ? 'tomorrow' : dayKey.toUpperCase();
+      const verifiedReply = `If you have ${hours}h available ${dayLabel} (adjusted from ${currentCapacity}h), you have ~${demandHours}h of assignments planned.`;
 
       const confirmation: GroundedConfirmation = {
         type: 'set_capacity',
         title: `Set ${dayLabel}'s study hours to ${hours}h?`,
-        description: `Updates your focus capacity to ${hours} hours for ${targetDayKey.toUpperCase()}.`,
-        payload: { day: targetDayKey, hours },
+        description: `Updates your focus capacity to ${hours} hours for ${dayKey.toUpperCase()}.`,
+        payload: { day: dayKey, hours },
         confirmLabel: 'Update study hours',
       };
 
       return {
-        reply,
-        reasoning: `Adjusting focus hours updates your workload buffer and accurately flags overloaded days.`,
+        reply: modelReply || verifiedReply,
+        reasoning: 'Adjusting focus hours updates your workload buffer and accurately flags overloaded days.',
         source,
+        fallbackReason,
         confirmation,
         suggestionChips: ['Why is this my top task?', 'What if I delay a task?'],
       };
     }
 
-    case 'what_if_skip': {
-      let targetTask = incompleteTasks.find((t) => t.priority === 'low') || incompleteTasks[incompleteTasks.length - 1];
-      if (parameters?.taskId) {
-        const found = incompleteTasks.find((t) => t.id === parameters.taskId);
-        if (found) targetTask = found;
+    case 'propose_drop_task': {
+      const resolution = resolveTaskRef(args.taskRef, context);
+      if (resolution.isAmbiguous && resolution.candidates) {
+        return {
+          reply: 'I found multiple matching assignments. Which one did you mean to skip?',
+          source,
+          fallbackReason,
+          clarificationOptions: resolution.candidates.map((m) => ({
+            label: `${m.course}: ${m.title}`,
+            query: `What if I skip ${m.title}?`,
+          })),
+        };
       }
 
+      const targetTask = resolution.task;
       if (!targetTask) {
         return {
           reply: 'You have no incomplete tasks to skip.',
           source,
+          fallbackReason,
           suggestionChips: ['Add a task', 'Check my schedule'],
         };
       }
 
       const effort = targetTask.estimatedHours;
-      const reply = `Skipping "${targetTask.title}" (${targetTask.course}) would free up ~${effort} hours of study time.`;
+      const verifiedReply = `Skipping "${targetTask.title}" (${targetTask.course}) would free up ~${effort} hours of study time.`;
 
       const confirmation: GroundedConfirmation = {
         type: 'drop_task',
         title: `Let go of "${targetTask.title}"?`,
-        description: `Marks this assignment as dropped without penalty or guilt.`,
+        description: 'Marks this assignment as dropped without penalty or guilt.',
         payload: { taskId: targetTask.id },
         confirmLabel: 'Let it go',
       };
 
       return {
-        reply,
-        reasoning: 'Dropping low-priority reading or optional work is a valid triage strategy when you are overloaded.',
+        reply: modelReply || verifiedReply,
+        reasoning:
+          'Dropping low-priority reading or optional work is a valid triage strategy when you are overloaded.',
         source,
+        fallbackReason,
         confirmation,
         referencedTaskId: targetTask.id,
         suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight'],
       };
     }
 
-    case 'what_if_move': {
-      let targetTask = topRecommendation?.task || incompleteTasks[0];
-      if (parameters?.taskId) {
-        const found = incompleteTasks.find((t) => t.id === parameters.taskId);
-        if (found) targetTask = found;
+    case 'propose_move_task': {
+      const resolution = resolveTaskRef(args.taskRef, context);
+      if (resolution.isAmbiguous && resolution.candidates) {
+        return {
+          reply: 'I found multiple matching assignments. Which one would you like to move?',
+          source,
+          fallbackReason,
+          clarificationOptions: resolution.candidates.map((m) => ({
+            label: `${m.course}: ${m.title}`,
+            query: `What if I move ${m.title} by 1 day?`,
+          })),
+        };
       }
 
+      const targetTask = resolution.task;
       if (!targetTask) {
         return {
           reply: 'You have no incomplete tasks to move.',
           source,
+          fallbackReason,
           suggestionChips: ['Add a task'],
         };
       }
 
-      const days = Math.max(1, Math.min(7, Number(parameters?.days) || 1));
-      const simulation = simulateTaskDelay(targetTask, days, context.tasks, context.capacitySettings, context.now);
+      let days = Number(args.days) || 1;
+      if (args.weekday) {
+        const { dayOffset } = parseTargetDay(args.weekday, context.now);
+        days = Math.max(1, dayOffset);
+      }
+      days = Math.max(1, Math.min(7, days));
+
+      const simulation = simulateTaskDelay(
+        targetTask,
+        days,
+        context.tasks,
+        context.capacitySettings,
+        context.now
+      );
 
       const targetDate = new Date(context.now);
       targetDate.setDate(targetDate.getDate() + simulation.targetDayIndex);
@@ -772,62 +816,90 @@ export function groundIntent(
       };
 
       return {
-        reply: simulation.consequenceSentence,
+        reply: modelReply || simulation.consequenceSentence,
         reasoning: `Postponing by ${days} day(s) shifts demand into ${simulation.targetDayLabel}.`,
         source,
+        fallbackReason,
         confirmation,
         referencedTaskId: targetTask.id,
         suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight'],
       };
     }
 
-    case 'add_task': {
-      const title = typeof parameters?.title === 'string' ? parameters.title.trim() : 'New Assignment';
-      const course = typeof parameters?.course === 'string' ? parameters.course.trim().toUpperCase() : 'GENERAL';
-      let dueDateTime = new Date(context.now.getTime() + 48 * 3600 * 1000).toISOString();
-      if (parameters?.dueDateTime && !isNaN(new Date(parameters.dueDateTime).getTime())) {
-        dueDateTime = new Date(parameters.dueDateTime).toISOString();
-      }
-      const estimatedHours = Math.max(0.25, Math.min(40, Number(parameters?.estimatedHours) || 2.0));
-      const priority = ['urgent', 'high', 'medium', 'low'].includes(parameters?.priority)
-        ? parameters.priority
-        : 'medium';
-      const category = ['assignment', 'lab', 'project', 'reading', 'quiz', 'exam'].includes(parameters?.category)
-        ? parameters.category
-        : 'assignment';
-
-      const taskData = {
-        title,
-        course,
-        dueDateTime,
-        estimatedHours,
-        priority,
-        category,
-        notes: typeof parameters?.notes === 'string' ? parameters.notes : '',
-      };
-
-      const confirmation: GroundedConfirmation = {
-        type: 'add_task',
-        title: `Add "${title}" (${course})?`,
-        description: `Due ${formatRelativeTime(Math.round((new Date(dueDateTime).getTime() - context.now.getTime()) / 3600000))}, ~${estimatedHours}h estimated effort.`,
-        payload: taskData,
-        confirmLabel: 'Add task',
-      };
-
+    default: {
       return {
-        reply: `Proposed adding "${title}" to your schedule.`,
+        reply: modelReply || `You have ${facts.totalActiveCount} active assignments requiring ~${facts.totalActiveHours} total study hours.`,
         source,
-        confirmation,
-        suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight'],
+        fallbackReason,
+        suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What should I do next?'],
       };
+    }
+  }
+}
+
+/**
+ * Computes numbers strictly using real app algorithms and generates confirmation cards.
+ */
+export function groundIntent(
+  intent: string,
+  parameters: any,
+  rawReply: string,
+  context: AskContextSnapshot,
+  source: 'gemini' | 'rule-based',
+  fallbackReason?: FallbackReason
+): GroundedAnswer {
+  const facts = buildAppFacts(context.tasks, context.capacitySettings, context.now, context.remainingEffortMap);
+
+  switch (intent) {
+    case 'chat': {
+      return {
+        reply: rawReply || 'How can I help you manage your coursework today?',
+        source,
+        fallbackReason,
+        suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What if I delay my next deadline?'],
+      };
+    }
+
+    case 'clarify': {
+      const options = Array.isArray(parameters?.clarificationOptions)
+        ? parameters.clarificationOptions
+        : [];
+      return {
+        reply: rawReply || 'I found multiple matching assignments. Which one did you mean?',
+        source,
+        fallbackReason,
+        clarificationOptions: options,
+      };
+    }
+
+    case 'explain_ranking': {
+      return groundToolCall('explain_task', { taskRef: parameters?.taskId || parameters?.taskTitle }, rawReply, context, source, facts, fallbackReason);
+    }
+
+    case 'set_today_capacity': {
+      return groundToolCall('propose_set_capacity', { day: parameters?.dayKey, hours: parameters?.hours }, rawReply, context, source, facts, fallbackReason);
+    }
+
+    case 'what_if_skip': {
+      return groundToolCall('propose_drop_task', { taskRef: parameters?.taskId }, rawReply, context, source, facts, fallbackReason);
+    }
+
+    case 'what_if_move': {
+      return groundToolCall('propose_move_task', { taskRef: parameters?.taskId, days: parameters?.days }, rawReply, context, source, facts, fallbackReason);
+    }
+
+    case 'add_task': {
+      return groundToolCall('propose_add_task', parameters, rawReply, context, source, facts, fallbackReason);
     }
 
     case 'unknown':
     default: {
       if (parameters?.isOffTopic) {
         return {
-          reply: "I'm focused on helping you triage your deadlines and manage your study schedule. Ask me about what to do next, adjusting your study hours, or testing what happens if you delay an assignment!",
+          reply:
+            "I'm focused on helping you triage your deadlines and manage your study schedule. Ask me about what to do next, adjusting your study hours, or testing what happens if you delay an assignment!",
           source,
+          fallbackReason,
           suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What if I delay this task?'],
         };
       }
@@ -835,8 +907,106 @@ export function groundIntent(
       return {
         reply: rawReply || "I didn't quite get that. Here are some things you can ask me:",
         source,
+        fallbackReason,
         suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What if I delay a deadline?'],
       };
     }
   }
+}
+
+/**
+ * Executes grounded client-side business logic for an assistant query.
+ * Calls /api/ask with automatic fallback to offline rule-based classification.
+ */
+export async function processAskQuery(
+  userQuery: string,
+  context: AskContextSnapshot
+): Promise<GroundedAnswer> {
+  const query = userQuery.trim();
+  if (!query) {
+    return {
+      reply: 'Please ask a question about your deadlines, study hours, or upcoming assignments.',
+      source: 'rule-based',
+      suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What should I do next?'],
+    };
+  }
+
+  const facts = buildAppFacts(
+    context.tasks,
+    context.capacitySettings,
+    context.now,
+    context.remainingEffortMap
+  );
+
+  // 1. Check local small-talk and conversational queries FIRST (zero network latency)
+  const localMatch = checkLocalSmallTalk(query, context, facts);
+  if (localMatch) {
+    return localMatch;
+  }
+
+  let serverData: any = null;
+
+  // 2. Attempt serverless API call with rich grounding facts
+  try {
+    const compactTasks = context.tasks.map((t) => ({
+      id: t.id,
+      title: t.title,
+      course: t.course,
+      dueDateTime: t.dueDateTime,
+      estimatedHours: t.estimatedHours,
+      priority: t.priority,
+      category: t.category,
+    }));
+
+    const res = await fetch('/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: query,
+        snapshot: {
+          tasks: compactTasks,
+          now: context.now.toISOString(),
+          facts,
+          history: context.history?.slice(-8) || [],
+        },
+      }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (!data.fallbackToLocal) {
+        serverData = data;
+      } else {
+        serverData = data; // Carries fallbackReason
+      }
+    }
+  } catch {
+    // Fall back to rule-based offline processing
+  }
+
+  // 3. If server responded with Gemini tool call or text, process it
+  if (serverData && serverData.source === 'gemini' && !serverData.fallbackToLocal) {
+    if (serverData.toolCall) {
+      return groundToolCall(
+        serverData.toolCall.name,
+        serverData.toolCall.args,
+        serverData.reply,
+        context,
+        'gemini',
+        facts
+      );
+    }
+    // Plain text reply from Gemini
+    return {
+      reply: serverData.reply,
+      source: 'gemini',
+      referencedTaskId: facts.topTask?.id,
+      suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What should I do next?'],
+    };
+  }
+
+  // 4. Otherwise, use offline rule-based intent parsing
+  const offline = classifyOfflineQuery(query, context);
+  const fallbackReason = serverData?.fallbackReason || 'model_unavailable';
+  return groundIntent(offline.intent, offline.parameters, offline.reply, context, 'rule-based', fallbackReason);
 }

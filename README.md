@@ -130,21 +130,26 @@ npm test
      - Highlighted ambiguity banners alert students to verify cutoff times.
      - Checkbox selection allows students to deselect false positives or irrelevant lines with one click.
 
-10. **Conversational Grounded Schedule Assistant ("Ask" Assistant)**:
+10. **Conversational Grounded Schedule Assistant ("Rescue" Assistant v2)**:
    - Conversational schedule triage thread accessible via the **"Ask"** button in the header (accessible modal on desktop, smooth slide-up sheet on mobile).
    - Designed strictly for academic triage: answers questions grounded in the student's real deadlines, priorities, and study hours with full multi-turn conversational history.
+   - **Function Calling Architecture**: Uses Gemini function declarations (`explain_task`, `propose_add_task`, `propose_set_capacity`, `propose_drop_task`, `propose_move_task`) rather than rigid intent JSON. A tool call only creates a proposal; the client validates it with local deterministic math and presents interactive confirmation cards.
+   - **Configurable Models & Honest Diagnostics**:
+     - Configurable via `GEMINI_MODEL` (defaults to `gemini-3.5-flash-lite`) with automatic retry on `GEMINI_FALLBACK_MODEL` (defaults to `gemini-3.8-flash`).
+     - Sets thinking to `low` (`thinkingConfig: { thinkingLevel: 'low' }`) and temperature to `0.4`.
+     - Provides clear source badges in the UI: `✦ AI` or `Offline mode (limited)`, with honest diagnostic tooltips (`no_key`, `model_unavailable`, `rate_limited`, or `error`).
    - **Conversational Memory & Pronoun Resolution**: Supports natural follow-up questions (e.g. asking *"Can I delay it by 1 day?"* or *"What if I skip it?"* automatically resolves pronouns like `"it"`, `"that one"`, or `"this task"` to the most recently discussed assignment).
-   - **Fuzzy Coursework & Course Code Matching**: Matches queries by course codes (`CS 350`, `cs350`, `ECON 201`) and partial title keywords with automatic candidate scoring.
+   - **Fuzzy Coursework & Course Code Matching**: Matches queries by course codes (`CS 350`, `cs350`, `DBMS`, `ECON 201`) and partial title keywords with automatic candidate scoring.
    - **Ambiguity Clarification**: If a task reference is ambiguous or matches multiple items (e.g. *"the lab"* when two labs exist), the assistant presents clickable option chips instead of silently guessing.
    - **Fast Local Small-Talk & Grounded Greetings**: Intercepts greetings (`"hello"`, `"hey"`), thanks, and help queries instantly without network latency, welcoming students with real data about their top task and today's schedule.
-   - **Supported Queries & Intents**:
-     - *Explain Ranking*: *"Why is this my top task?"* — provides transparent mathematical rationale based on effort, deadline, and working buffer.
-     - *Adjust Capacity*: *"I only have 2 hours tonight"* (or tomorrow/Friday/in 2 days) — simulates impact on today's deficit and proposes an update.
-     - *Consequence Testing*: *"What if I skip my lab?"* or *"What if I move my essay by 2 days?"* — computes exact hours freed or runs the live forecast simulation.
-     - *Natural Language Task Intake*: *"Add CS 350 lab due Friday"* — proposes parsed coursework with validated time and categories.
-   - **Strict Grounding & Confirmation Cards**: The AI model never directly alters user data or hallucinates numbers. The client validates the classified intent, executes local deterministic algorithms to calculate figures, and displays interactive **Confirmation Cards** (*"Set today's focus hours to 2h? [Update study hours]"*, *"Add 'CS 350 Lab' [Add task]"*) requiring explicit student consent.
-   - **Offline Rule-Based Fallback**: Seamlessly switches to the offline rule matching engine with full capability if the serverless function is unreachable or no API key is configured.
-   - **Privacy First**: Ephemeral in-memory session; conversations and schedule snapshots are never stored remotely.
+   - **Distress & Overwhelm Empathy**: Kind, non-lecture response to overwhelmed students, breaking panic into a single concrete 10-minute starter micro-step.
+   - **Privacy First**: To answer, task titles and dates are sent to the secure Gemini API endpoint when online. Data is processed in-memory for the active session only and never stored remotely. Offline fallback runs 100% in-browser with zero remote requests.
+
+11. **Local Welcome Greeting Banner**:
+   - Dismissible card rendered at the top of the main dashboard, evaluated 100% locally with zero API calls.
+   - **First Visit Ever**: Shows a warm welcome intro with quick action chips (*"Paste my deadlines"*, *"Add a task"*, *"Show me around"*).
+   - **Returning Daily Visit**: Greets the student by time of day (*"Good morning!"*, *"Good afternoon!"*), displays a concrete schedule update from real facts (e.g. upcoming deadlines, overdue alerts, or today's study capacity balance), and provides actionable chips (*"Start <top task>"*, *"Plan my week"*, *"I'm swamped"*).
+   - **Same-Day Dismissal Memory**: Once dismissed, remembers dismissal for the rest of the day in localStorage and softly animates out. Respects `prefers-reduced-motion`.
 
 11. **Task Management & Form Validation**:
    - Add and edit assignments with title, course code (e.g., `CS 350`), category (assignment, lab, exam, quiz, etc.), due date & time, estimated effort (hours), priority, and notes.

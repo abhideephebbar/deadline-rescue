@@ -19,6 +19,7 @@ import { ImportTasksModal } from './components/ImportTasksModal';
 import { CatchUpModal } from './components/CatchUpModal';
 import { ProductTour } from './components/ProductTour';
 import { AskModal } from './components/AskModal';
+import { WelcomeGreeting } from './components/WelcomeGreeting';
 import { Modal } from './components/ui/Modal';
 import { useTasks } from './hooks/useTasks';
 import { useCapacity } from './hooks/useCapacity';
@@ -27,6 +28,8 @@ import { getRemainingEffortMap } from './utils/stopwatchIntegration';
 import { getCategoryCalibrations } from './utils/calibration';
 import { getSmartRecommendations } from './utils/ranking';
 import { getStatusSentence } from './utils/statusSentence';
+import { buildAppFacts } from './utils/facts';
+import { GreetingActionType } from './utils/greeting';
 import { isSampleTaskSet, isSampleBannerDismissed, dismissSampleBanner } from './utils/sampleDetection';
 import { generateTourDemoTasks } from './utils/tour';
 import { Task, Priority, TaskCategory } from './types';
@@ -195,6 +198,39 @@ export function App() {
     return topRecommendation?.task || null;
   }, [stopwatch.selectedTaskId, displayTasks, topRecommendation]);
 
+  const appFacts = useMemo(
+    () => buildAppFacts(displayTasks, capacitySettings, currentTime, remainingEffortMap),
+    [displayTasks, capacitySettings, currentTime, remainingEffortMap]
+  );
+
+  const handleGreetingAction = (action: GreetingActionType, taskId?: string) => {
+    switch (action) {
+      case 'paste':
+        setIsImportModalOpen(true);
+        break;
+      case 'add':
+        handleOpenAddModal();
+        break;
+      case 'tour':
+        setIsTourActive(true);
+        break;
+      case 'start_top':
+        if (taskId) {
+          const found = displayTasks.find((t) => t.id === taskId);
+          if (found) handleStartNow(found);
+        } else if (topRecommendation?.task) {
+          handleStartNow(topRecommendation.task);
+        }
+        break;
+      case 'plan_week':
+        setIsCapacityModalOpen(true);
+        break;
+      case 'swamped':
+        setIsTriageModalOpen(true);
+        break;
+    }
+  };
+
   return (
     <MotionConfig reducedMotion="user">
       <LazyMotion features={domAnimation}>
@@ -231,6 +267,13 @@ export function App() {
             onKeep={handleKeepDemoTasks}
           />
         )}
+
+        {/* Welcome Greeting Banner (First visit or Daily check-in) */}
+        <WelcomeGreeting
+          facts={appFacts}
+          now={currentTime}
+          onAction={handleGreetingAction}
+        />
 
         <AnimatePresence mode="wait">
           {displayTasks.length === 0 ? (
