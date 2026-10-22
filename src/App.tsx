@@ -10,6 +10,7 @@ import { CapacitySettingsModal } from './components/CapacitySettingsModal';
 import { TriageModal } from './components/TriageModal';
 import { ResetWeekModal } from './components/ResetWeekModal';
 import { InstructorEmailModal } from './components/InstructorEmailModal';
+import { ImportTasksModal } from './components/ImportTasksModal';
 import { Stopwatch } from './components/Stopwatch';
 import { SideNav } from './components/SideNav';
 import { AnimatedNoise } from './components/AnimatedNoise';
@@ -63,6 +64,7 @@ export function App() {
   const [isCapacityModalOpen, setIsCapacityModalOpen] = useState(false);
   const [isTriageModalOpen, setIsTriageModalOpen] = useState(false);
   const [isResetWeekModalOpen, setIsResetWeekModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [emailTaskTarget, setEmailTaskTarget] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
@@ -113,6 +115,12 @@ export function App() {
     }
   };
 
+  const handleImportTasks = (
+    newTasks: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'completed'>[]
+  ) => {
+    newTasks.forEach((t) => addTask(t));
+  };
+
   const candidateTask = tasks.find((t) => t.id === deleteCandidateId);
 
   return (
@@ -131,6 +139,7 @@ export function App() {
           onOpenCapacitySettings={() => setIsCapacityModalOpen(true)}
           totalWeeklyCapacityHours={totalWeeklyCapacityHours}
           onOpenResetWeek={() => setIsResetWeekModalOpen(true)}
+          onOpenImport={() => setIsImportModalOpen(true)}
         />
 
         {/* Main Content Area (offset by side rail on desktop) */}
@@ -264,6 +273,7 @@ export function App() {
               capacitySettings={capacitySettings}
               remainingEffortMap={remainingEffortMap}
               onEmailInstructor={(task) => setEmailTaskTarget(task)}
+              onOpenImport={() => setIsImportModalOpen(true)}
             />
           </section>
 
@@ -367,6 +377,14 @@ export function App() {
             toggleComplete(taskId);
             setEmailTaskTarget(null);
           }}
+        />
+
+        {/* Paste-to-Import Modal */}
+        <ImportTasksModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          onImportTasks={handleImportTasks}
+          now={currentTime}
         />
       </div>
     </SplitFlapAudioProvider>

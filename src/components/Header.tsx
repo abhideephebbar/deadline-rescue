@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RotateCcw, Plus, Radio, Sliders } from 'lucide-react';
+import { RotateCcw, Plus, Radio, Sliders, FileText } from 'lucide-react';
 import { SplitFlapMuteToggle } from './SplitFlapText';
 import { ScrambleTextOnHover } from './ScrambleText';
 import { BitmapChevron } from './BitmapChevron';
@@ -10,6 +10,7 @@ interface HeaderProps {
   onOpenCapacitySettings?: () => void;
   totalWeeklyCapacityHours?: number;
   onOpenResetWeek?: () => void;
+  onOpenImport?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCapacitySettings,
   totalWeeklyCapacityHours = 28,
   onOpenResetWeek,
+  onOpenImport,
 }) => {
   const [currentTime, setCurrentTime] = useState<string>('');
 
@@ -109,6 +111,19 @@ export const Header: React.FC<HeaderProps> = ({
               <RotateCcw className="w-3 h-3" />
               <span className="hidden sm:inline">Reset</span>
             </button>
+
+            {/* Import Tasks Action */}
+            {onOpenImport && (
+              <button
+                onClick={onOpenImport}
+                type="button"
+                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 border border-white/10 hover:border-orange-500/50 text-zinc-300 hover:text-orange-400 font-mono text-[11px] uppercase tracking-wider transition-colors bg-black/20 cursor-pointer"
+                title="Paste syllabus, Canvas announcements, or emails to import tasks"
+              >
+                <FileText className="w-3.5 h-3.5 text-orange-400" />
+                <span className="hidden sm:inline">Import</span>
+              </button>
+            )}
 
             {/* Add Task Primary Action */}
             <button

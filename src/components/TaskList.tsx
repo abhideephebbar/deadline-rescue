@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { 
   Search, 
   SlidersHorizontal, 
-  RotateCcw
+  RotateCcw,
+  FileText
 } from 'lucide-react';
 import { Task, TaskFilter, TaskSort, CapacitySettings } from '../types';
 import { TaskCard } from './TaskCard';
@@ -21,6 +22,7 @@ interface TaskListProps {
   capacitySettings?: CapacitySettings;
   remainingEffortMap?: Record<string, number>;
   onEmailInstructor?: (task: Task) => void;
+  onOpenImport?: () => void;
 }
 
 export const TaskList: React.FC<TaskListProps> = ({
@@ -34,6 +36,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   capacitySettings,
   remainingEffortMap,
   onEmailInstructor,
+  onOpenImport,
 }) => {
   const [filter, setFilter] = useState<TaskFilter>('all');
   const [selectedCourse, setSelectedCourse] = useState<string>('all');
@@ -260,7 +263,7 @@ export const TaskList: React.FC<TaskListProps> = ({
               <p className="text-xs text-zinc-400 leading-relaxed">
                 Your priority radar is currently clear. Add a new deadline or load demo coursework to test the triage engine.
               </p>
-              <div className="flex items-center justify-center gap-3 pt-3">
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
                 <button
                   onClick={onOpenAddTask}
                   type="button"
@@ -269,10 +272,20 @@ export const TaskList: React.FC<TaskListProps> = ({
                   <span>Add First Task</span>
                   <BitmapChevron />
                 </button>
+                {onOpenImport && (
+                  <button
+                    onClick={onOpenImport}
+                    type="button"
+                    className="border border-white/20 px-4 py-2 text-xs uppercase tracking-widest text-zinc-200 hover:text-white hover:border-orange-500/50 transition-colors flex items-center space-x-1.5 cursor-pointer bg-black/40"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-orange-400" />
+                    <span>Paste Syllabus</span>
+                  </button>
+                )}
                 <button
                   onClick={onResetSamples}
                   type="button"
-                  className="border border-white/10 px-4 py-2 text-xs uppercase tracking-widest text-zinc-300 hover:text-white hover:border-white/30 transition-colors"
+                  className="border border-white/10 px-4 py-2 text-xs uppercase tracking-widest text-zinc-300 hover:text-white hover:border-white/30 transition-colors cursor-pointer"
                 >
                   Load Sample Data
                 </button>

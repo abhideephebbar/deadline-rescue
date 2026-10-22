@@ -95,27 +95,64 @@ npm test
      - Offers 3 strategies: *Realistic Reschedule* (distributes overdue tasks forward into upcoming open capacity windows), *Submit Partial Work*, and *Clean Slate / Drop* (forgives backlog so student can focus 100% on upcoming deliverables).
      - Full interactive preview displaying before-and-after schedule and capacity impact before confirmation.
 
-9. **Task Management & Form Validation**:
+9. **Paste-to-Import with Fallback Engine (Offline Rule-Based + Serverless Gemini AI)**:
+   - Paste raw syllabus excerpts, Canvas announcements, professor emails, or study group chat messages into an intake console.
+   - **Offline Rule-Based Parser (100% Private, Zero Setup)**:
+     - Runs locally in the browser with no backend or external network connection required.
+     - High-precision regex pattern matching for course codes (`CS 350`, `MATH 101`, `ECON 201`), dates (`Oct 28`, `Friday 11:59pm`, `10/30`, `tomorrow at 5pm`), categories (`assignment`, `lab`, `quiz`, `project`, `exam`, `reading`), and effort keywords (`~4h`, `2.5 hours`).
+     - **Ambiguity Detection**: Explicitly flags ambiguous dates (e.g. only a weekday mentioned, missing cutoff times, or unstated years) for student review rather than silently guessing.
+   - **Optional Serverless Gemini AI Parser (`api/parse-tasks.ts`)**:
+     - Hosted on Vercel as a secure serverless function that uses Google Gemini 2.5 Flash for natural language parsing of complex, conversational text.
+     - Keeps credentials strictly server-side: `GEMINI_API_KEY` is never bundled into client JavaScript.
+     - **Seamless Fallback**: If the serverless endpoint is offline, rate-limited, or no API key is set, the app instantly falls back to the rule-based engine with zero interruption.
+   - **Editable Review Table**:
+     - Clean tabular review interface before items hit the priority radar.
+     - Edit titles, course codes, deadlines, categories, and estimated hours inline.
+     - Highlighted ambiguity banners alert students to verify cutoff times.
+     - Checkbox selection allows students to deselect false positives or irrelevant lines with one click.
+
+10. **Task Management & Form Validation**:
    - Add and edit assignments with title, course code (e.g., `CS 350`), category (assignment, lab, exam, quiz, etc.), due date & time, estimated effort (hours), priority, and notes.
    - Real-time form validation with inline feedback.
    - Fast presets for college students (`Tonight 11:59 PM`, `Tomorrow 11:59 PM`, `In 2 Days`, `+0.5h`, `+1h`, `+2h`, etc.).
 
-10. **Task Cards with Urgency Indicators**:
+11. **Task Cards with Urgency Indicators**:
    - Dynamic urgency badges: `OVERDUE`, `TIME DEFICIT`, `CRITICAL (<12H)`, `DUE TODAY (<24H)`, `UPCOMING (<3 DAYS)`, `ON RADAR`.
    - Relative countdown time (`Due in 6h 30m`) and formatted calendar timestamps.
    - Safety buffer pill (`2.5h buffer` or `⚠️ 1.5h Deficit!`).
    - One-click completion with congratulatory confetti animation.
    - Edit and delete actions with confirmation dialog.
 
-11. **Sorting & Filtering**:
+12. **Sorting & Filtering**:
    - Search across task titles, course codes, and notes.
    - Filter by status (`All`, `Pending`, `Due Today`, `Overdue`, `Completed`) and Course code.
    - Sort by Smart Rescue Priority, Deadline (Soonest first), Priority level, or Effort.
 
-12. **Persistence & Sample Data**:
+13. **Persistence & Sample Data**:
    - Persisted seamlessly via `localStorage` across page refreshes.
    - Loaded with realistic college coursework upon first visit.
    - "Reset Samples" button for instant testing.
+
+---
+
+## 🔑 Configuring Serverless Gemini AI (Optional)
+
+By default, Deadline Rescue operates **100% offline with zero configuration** using its built-in rule-based parsing engine.
+
+If you deploy to **Vercel** and wish to enable LLM-assisted parsing for conversational text:
+1. Obtain a free API key from [Google AI Studio](https://aistudio.google.com/).
+2. In your Vercel project dashboard, navigate to **Settings > Environment Variables**.
+3. Add:
+   ```bash
+   GEMINI_API_KEY=your_gemini_api_key_here
+   ```
+4. For local testing with the Vercel CLI:
+   ```bash
+   vercel env pull .env.local
+   vercel dev
+   ```
+
+> **Privacy & Fallback Invariant**: The API key is strictly server-side (`process.env.GEMINI_API_KEY`) and is never exposed in client bundles. If the key is unset or network requests fail, the client seamlessly falls back to local rule-based parsing.
 
 ---
 
