@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, Send, X, ShieldCheck, Check, AlertCircle } from 'lucide-react';
 import { Task, CapacitySettings } from '../types';
 import { processAskQuery, GroundedAnswer, GroundedConfirmation } from '../utils/askService';
+import { Modal } from './ui/Modal';
 
 interface AskModalProps {
   isOpen: boolean;
@@ -32,8 +33,6 @@ export const AskModal: React.FC<AskModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [currentAnswer, setCurrentAnswer] = useState<GroundedAnswer | null>(null);
   const [actionAppliedNotice, setActionAppliedNotice] = useState<string | null>(null);
-
-  if (!isOpen) return null;
 
   const handleSend = async (textToSend: string) => {
     const text = textToSend.trim();
@@ -80,7 +79,6 @@ export const AskModal: React.FC<AskModalProps> = ({
         break;
     }
 
-    // Clear current confirmation after applying
     if (currentAnswer) {
       setCurrentAnswer({
         ...currentAnswer,
@@ -97,18 +95,18 @@ export const AskModal: React.FC<AskModalProps> = ({
   ];
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="ask-modal-title"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-fade-in font-sans"
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidthClass="max-w-lg"
+      title="Ask about your schedule"
     >
-      <div className="bg-[#141414] border border-white/10 rounded-t-2xl sm:rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div className="font-sans flex flex-col max-h-[85vh]">
         {/* Header */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center space-x-2 text-orange-400">
             <Sparkles className="w-4 h-4" />
-            <h2 id="ask-modal-title" className="text-sm sm:text-base font-semibold text-white">
+            <h2 className="text-base font-semibold text-white">
               Ask about your schedule
             </h2>
           </div>
@@ -149,7 +147,7 @@ export const AskModal: React.FC<AskModalProps> = ({
 
           {/* Action Success Toast */}
           {actionAppliedNotice && (
-            <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-950/20 text-emerald-300 text-xs flex items-center space-x-2 animate-fade-in">
+            <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-950/20 text-emerald-300 text-xs flex items-center space-x-2">
               <Check className="w-4 h-4 shrink-0" />
               <span>{actionAppliedNotice}</span>
             </div>
@@ -165,7 +163,7 @@ export const AskModal: React.FC<AskModalProps> = ({
 
           {/* Grounded Answer Card */}
           {currentAnswer && !isLoading && (
-            <div className="p-4 rounded-xl border border-white/10 bg-zinc-950/60 space-y-3 animate-fade-in">
+            <div className="p-4 rounded-xl border border-white/10 bg-zinc-950/60 space-y-3">
               <div className="flex items-center justify-between text-[11px] text-zinc-500 border-b border-white/5 pb-2">
                 <span className="font-medium text-zinc-400">Answer</span>
                 <span className="bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-[10px]">
@@ -186,7 +184,7 @@ export const AskModal: React.FC<AskModalProps> = ({
 
               {/* Confirmation Card for data changes */}
               {currentAnswer.confirmation && (
-                <div className="p-3 rounded-lg border border-orange-500/40 bg-orange-950/20 space-y-2 mt-3 animate-scale-in">
+                <div className="p-3 rounded-lg border border-orange-500/40 bg-orange-950/20 space-y-2 mt-3">
                   <div className="flex items-start space-x-2 text-xs">
                     <AlertCircle className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
                     <div>
@@ -256,6 +254,6 @@ export const AskModal: React.FC<AskModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };

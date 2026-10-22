@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Copy, Check, ExternalLink, Sparkles, Send } from 'lucide-react';
+import { X, Mail, Copy, Check, ExternalLink, Send } from 'lucide-react';
 import { Task } from '../types';
 import { generateInstructorEmail } from '../utils/recovery';
+import { Modal } from './ui/Modal';
 
 interface InstructorEmailModalProps {
   isOpen: boolean;
@@ -30,19 +31,6 @@ export const InstructorEmailModal: React.FC<InstructorEmailModalProps> = ({
     }
   }, [task, templateType]);
 
-  // ESC handler
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!isOpen || !task) return null;
-
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(`Subject: ${emailSubject}\n\n${emailBody}`);
@@ -56,179 +44,169 @@ export const InstructorEmailModal: React.FC<InstructorEmailModalProps> = ({
   const mailtoUrl = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="instructor-email-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto animate-fade-in"
+    <Modal
+      isOpen={isOpen && !!task}
+      onClose={onClose}
+      maxWidthClass="max-w-2xl"
+      title="Email instructor"
     >
-      <div className="relative w-full max-w-2xl bg-[#111111] border border-orange-500/40 text-white font-mono shadow-[0_0_50px_rgba(249,115,22,0.15)] p-6 sm:p-8 space-y-6 max-h-[92vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-start justify-between border-b border-white/10 pb-4">
-          <div>
-            <div className="flex items-center space-x-2 text-orange-400 text-xs uppercase tracking-widest font-bold">
-              <Mail className="w-4 h-4 text-orange-500" />
-              <span>RECOVERY ACTION // INSTRUCTOR OUTREACH</span>
+      {task && (
+        <div className="p-6 sm:p-7 space-y-6 font-sans">
+          {/* Header */}
+          <div className="flex items-start justify-between border-b border-white/10 pb-4">
+            <div>
+              <div className="flex items-center space-x-2 text-orange-400 text-xs font-semibold uppercase tracking-wider">
+                <Mail className="w-4 h-4 text-orange-500" />
+                <span>Instructor message</span>
+              </div>
+              <h2 className="text-xl font-bold text-white tracking-tight mt-1">
+                Reach out without anxiety
+              </h2>
+              <p className="text-xs text-zinc-400 mt-1">
+                Professors appreciate proactive communication. A thoughtful message demonstrates responsibility.
+              </p>
             </div>
-            <h2 id="instructor-email-title" className="font-display text-2xl sm:text-3xl text-white tracking-tight uppercase mt-1">
-              Reach Out Without Anxiety
-            </h2>
-            <p className="text-xs text-zinc-400 mt-1">
-              Professors appreciate clear, proactive communication. Sending a thoughtful message demonstrates responsibility and opens doors for partial credit.
-            </p>
+            <button
+              onClick={onClose}
+              aria-label="Close modal"
+              className="p-1.5 rounded-lg border border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close modal"
-            className="p-1.5 border border-white/10 text-zinc-400 hover:text-white hover:border-white/30 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
 
-        {/* Task Details Banner */}
-        <div className="p-3 border border-white/10 bg-black/40 flex items-center justify-between text-xs">
-          <div className="space-y-0.5">
-            <span className="text-[10px] uppercase text-zinc-500 tracking-wider">TARGET COURSEWORK:</span>
-            <div className="flex items-center space-x-2">
-              <span className="px-1.5 border border-white/20 text-orange-400 font-bold whitespace-nowrap shrink-0">{task.course}</span>
-              <span className="font-bold text-white uppercase">{task.title}</span>
+          {/* Task Details Banner */}
+          <div className="p-3 rounded-lg border border-white/10 bg-black/40 flex items-center justify-between text-xs">
+            <div className="space-y-0.5">
+              <span className="text-[11px] text-zinc-400">Coursework:</span>
+              <div className="flex items-center space-x-2">
+                <span className="px-1.5 py-0.5 rounded border border-white/20 text-orange-400 font-bold whitespace-nowrap shrink-0">{task.course}</span>
+                <span className="font-semibold text-white">{task.title}</span>
+              </div>
+            </div>
+            <span className="text-zinc-400 text-xs capitalize">{task.category}</span>
+          </div>
+
+          {/* Template Selector Pills */}
+          <div className="space-y-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300 block">
+              Choose template:
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setTemplateType('extension')}
+                className={`p-3 rounded-lg text-left border transition-all ${
+                  templateType === 'extension'
+                    ? 'border-orange-500 bg-orange-500/10 text-white'
+                    : 'border-white/10 bg-black/40 text-zinc-400 hover:border-white/30'
+                }`}
+              >
+                <div className="text-xs font-medium text-white mb-0.5">1. Request Extension</div>
+                <p className="text-[11px] text-zinc-400">Polite request for 24-48h extra</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTemplateType('partial_submission')}
+                className={`p-3 rounded-lg text-left border transition-all ${
+                  templateType === 'partial_submission'
+                    ? 'border-orange-500 bg-orange-500/10 text-white'
+                    : 'border-white/10 bg-black/40 text-zinc-400 hover:border-white/30'
+                }`}
+              >
+                <div className="text-xs font-medium text-white mb-0.5">2. Partial Work</div>
+                <p className="text-[11px] text-zinc-400">Submit what is done for partial credit</p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTemplateType('office_hours')}
+                className={`p-3 rounded-lg text-left border transition-all ${
+                  templateType === 'office_hours'
+                    ? 'border-orange-500 bg-orange-500/10 text-white'
+                    : 'border-white/10 bg-black/40 text-zinc-400 hover:border-white/30'
+                }`}
+              >
+                <div className="text-xs font-medium text-white mb-0.5">3. Office Hours</div>
+                <p className="text-[11px] text-zinc-400">Ask for help on blockers</p>
+              </button>
             </div>
           </div>
-          <span className="text-zinc-500 text-[11px]">{task.category}</span>
-        </div>
 
-        {/* Template Selector */}
-        <div className="space-y-2">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold block">
-            SELECT OUTREACH INTENT:
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => setTemplateType('extension')}
-              className={`p-2.5 text-left border transition-all cursor-pointer ${
-                templateType === 'extension'
-                  ? 'border-orange-500 bg-orange-500/10 text-white font-bold'
-                  : 'border-white/10 bg-black/30 text-zinc-400 hover:border-white/20'
-              }`}
-            >
-              <span className="text-orange-400 block text-[10px] uppercase">01 // EXTENSION</span>
-              <span className="text-xs">Ask for 24-48h reset</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setTemplateType('partial_submission')}
-              className={`p-2.5 text-left border transition-all cursor-pointer ${
-                templateType === 'partial_submission'
-                  ? 'border-emerald-500 bg-emerald-500/10 text-white font-bold'
-                  : 'border-white/10 bg-black/30 text-zinc-400 hover:border-white/20'
-              }`}
-            >
-              <span className="text-emerald-400 block text-[10px] uppercase">02 // PARTIAL WORK</span>
-              <span className="text-xs">Submit what you have</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setTemplateType('office_hours')}
-              className={`p-2.5 text-left border transition-all cursor-pointer ${
-                templateType === 'office_hours'
-                  ? 'border-blue-500 bg-blue-500/10 text-white font-bold'
-                  : 'border-white/10 bg-black/30 text-zinc-400 hover:border-white/20'
-              }`}
-            >
-              <span className="text-blue-400 block text-[10px] uppercase">03 // OFFICE HOURS</span>
-              <span className="text-xs">Request check-in</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Subject & Body Fields */}
-        <div className="space-y-3 text-xs">
-          <div>
-            <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold block mb-1">
-              EMAIL SUBJECT:
-            </label>
+          {/* Subject Field */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-zinc-300 block">Subject line</label>
             <input
               type="text"
               value={emailSubject}
               onChange={(e) => setEmailSubject(e.target.value)}
-              className="w-full p-2.5 bg-black border border-white/20 text-white font-mono text-xs focus:border-orange-500 focus:outline-none"
+              className="w-full px-3 py-2 rounded-lg bg-black border border-white/15 text-white text-xs focus:border-orange-500 focus:outline-none"
             />
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">
-                MESSAGE BODY:
-              </label>
-              <span className="text-[10px] text-zinc-500 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-orange-400" />
-                Personalize as needed
-              </span>
-            </div>
+          {/* Body Textarea */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-zinc-300 block">Message draft</label>
             <textarea
               rows={8}
               value={emailBody}
               onChange={(e) => setEmailBody(e.target.value)}
-              className="w-full p-3 bg-black border border-white/20 text-white font-mono text-xs focus:border-orange-500 focus:outline-none leading-relaxed resize-y"
+              className="w-full p-3.5 rounded-xl bg-black border border-white/15 text-white text-xs leading-relaxed focus:border-orange-500 focus:outline-none resize-y"
             />
           </div>
-        </div>
 
-        {/* Reassurance note */}
-        <div className="p-3 border border-white/5 bg-zinc-950 text-[11px] text-zinc-400">
-          💡 <strong>Tip:</strong> Send this from your university email account (.edu). Most instructors appreciate student honesty when faced with heavy crunch weeks.
-        </div>
-
-        {/* Footer Actions */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-white/10">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleCopy}
-              type="button"
-              className="px-4 py-2 border border-white/20 hover:border-white/40 text-white text-xs font-bold uppercase tracking-wider transition-colors flex items-center space-x-1.5 cursor-pointer"
-            >
-              {copied ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400">Copied to Clipboard!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copy Draft</span>
-                </>
-              )}
-            </button>
-
-            <a
-              href={mailtoUrl}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-wider transition-colors flex items-center space-x-1.5 cursor-pointer"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>Open in Mail App</span>
-            </a>
+          {/* Tip */}
+          <div className="p-3 rounded-lg border border-white/5 bg-zinc-950 text-xs text-zinc-400">
+            💡 <strong>Tip:</strong> Send this from your university email account (.edu). Most instructors appreciate student honesty.
           </div>
 
-          {onMarkSubmitted && (
-            <button
-              onClick={() => {
-                onMarkSubmitted(task.id);
-                onClose();
-              }}
-              type="button"
-              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center space-x-1.5 cursor-pointer"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>Mark as Submitted</span>
-            </button>
-          )}
+          {/* Footer Actions */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-white/10">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleCopy}
+                type="button"
+                className="px-4 py-2 rounded-lg border border-white/20 hover:border-white/40 text-white text-xs font-medium transition-colors flex items-center space-x-1.5 cursor-pointer"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-400">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy draft</span>
+                  </>
+                )}
+              </button>
+
+              <a
+                href={mailtoUrl}
+                className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors flex items-center space-x-1.5 cursor-pointer"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Open in mail</span>
+              </a>
+            </div>
+
+            {onMarkSubmitted && (
+              <button
+                onClick={() => {
+                  onMarkSubmitted(task.id);
+                  onClose();
+                }}
+                type="button"
+                className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-semibold transition-colors flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Mark as submitted</span>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </Modal>
   );
 };
-

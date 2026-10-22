@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Check, Mail, Calendar, EyeOff, Clock, Sparkles } from 'lucide-react';
 import { Task } from '../types';
 import { formatRelativeTime } from '../utils/date';
+import { Modal } from './ui/Modal';
 
 interface CatchUpModalProps {
   isOpen: boolean;
@@ -27,8 +28,6 @@ export const CatchUpModal: React.FC<CatchUpModalProps> = ({
   const [reschedulingTaskId, setReschedulingTaskId] = useState<string | null>(null);
   const [customDate, setCustomDate] = useState<string>('');
 
-  if (!isOpen) return null;
-
   const handleQuickReschedule = (task: Task, daysToAdd: number) => {
     const base = now.getTime();
     const newDue = new Date(base + daysToAdd * 24 * 60 * 60 * 1000);
@@ -48,19 +47,19 @@ export const CatchUpModal: React.FC<CatchUpModalProps> = ({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="catch-up-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in font-sans"
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidthClass="max-w-lg"
+      title="Catch-up items"
     >
-      <div className="bg-[#141414] border border-white/10 rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div className="font-sans flex flex-col max-h-[85vh]">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-white/10 flex items-start justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center space-x-2 text-orange-400">
               <Sparkles className="w-4 h-4" />
-              <h2 id="catch-up-title" className="text-base sm:text-lg font-semibold text-white">
+              <h2 className="text-base sm:text-lg font-semibold text-white">
                 Catch-up items
               </h2>
             </div>
@@ -129,95 +128,92 @@ export const CatchUpModal: React.FC<CatchUpModalProps> = ({
                         className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 text-xs font-medium transition-colors cursor-pointer"
                       >
                         <Check className="w-3.5 h-3.5" />
-                        <span>Mark done</span>
+                        <span>I already submitted it</span>
                       </button>
 
-                      {/* 2. Let it go / drop */}
-                      <button
-                        type="button"
-                        onClick={() => onDropTask(task.id)}
-                        className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-white/10 text-xs transition-colors cursor-pointer"
-                        title="Remove from active view without guilt"
-                      >
-                        <EyeOff className="w-3.5 h-3.5 text-zinc-400" />
-                        <span>Let it go</span>
-                      </button>
-
-                      {/* 3. Email instructor */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onEmailInstructor(task);
-                          onClose();
-                        }}
-                        className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-white/10 text-xs transition-colors cursor-pointer"
-                      >
-                        <Mail className="w-3.5 h-3.5 text-zinc-400" />
-                        <span>Email instructor</span>
-                      </button>
-
-                      {/* 4. Reschedule */}
+                      {/* 2. Reschedule */}
                       <button
                         type="button"
                         onClick={() => setReschedulingTaskId(task.id)}
-                        className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-orange-400 border border-white/10 text-xs transition-colors cursor-pointer"
+                        className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 text-xs font-medium transition-colors cursor-pointer"
                       >
                         <Calendar className="w-3.5 h-3.5" />
                         <span>Reschedule</span>
                       </button>
+
+                      {/* 3. Email Instructor */}
+                      <button
+                        type="button"
+                        onClick={() => onEmailInstructor(task)}
+                        className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 text-xs font-medium transition-colors cursor-pointer"
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        <span>Email instructor</span>
+                      </button>
+
+                      {/* 4. Drop without guilt */}
+                      <button
+                        type="button"
+                        onClick={() => onDropTask(task.id)}
+                        className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-red-500/10 text-xs font-medium transition-colors cursor-pointer ml-auto"
+                        title="Quietly drop this task without tracking penalty"
+                      >
+                        <EyeOff className="w-3.5 h-3.5" />
+                        <span>Drop task</span>
+                      </button>
                     </div>
                   ) : (
-                    /* Inline Reschedule Options */
-                    <div className="space-y-2 pt-2 border-t border-white/10 bg-black/40 p-3 rounded-lg animate-fade-in text-xs">
-                      <div className="flex items-center justify-between text-zinc-300 font-medium">
-                        <span>Pick new target deadline:</span>
+                    /* Reschedule Inline Picker */
+                    <div className="p-3 rounded-lg border border-orange-500/30 bg-black/60 space-y-2.5 pt-2">
+                      <div className="text-xs font-medium text-orange-400 flex items-center justify-between">
+                        <span>Reschedule when to finish this:</span>
                         <button
                           type="button"
                           onClick={() => setReschedulingTaskId(null)}
-                          className="text-zinc-500 hover:text-zinc-300 text-[11px]"
+                          className="text-zinc-500 hover:text-white"
                         >
                           Cancel
                         </button>
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-1.5">
                         <button
                           type="button"
                           onClick={() => handleQuickReschedule(task, 1)}
-                          className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-white/10"
+                          className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs text-zinc-300 border border-white/10"
                         >
-                          Tomorrow night
+                          Tomorrow midnight
                         </button>
                         <button
                           type="button"
                           onClick={() => handleQuickReschedule(task, 3)}
-                          className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-white/10"
+                          className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs text-zinc-300 border border-white/10"
                         >
                           In 3 days
                         </button>
                         <button
                           type="button"
                           onClick={() => handleQuickReschedule(task, 7)}
-                          className="px-2.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-white/10"
+                          className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs text-zinc-300 border border-white/10"
                         >
                           Next week
                         </button>
                       </div>
 
-                      <div className="flex items-center space-x-2 pt-1">
+                      <div className="flex items-center gap-2 pt-1 border-t border-white/5">
                         <input
                           type="datetime-local"
                           value={customDate}
                           onChange={(e) => setCustomDate(e.target.value)}
-                          className="px-2 py-1 rounded bg-zinc-900 border border-white/10 text-white text-xs"
+                          className="px-2 py-1 text-xs bg-black border border-white/15 rounded text-white focus:outline-none flex-1"
                         />
                         <button
                           type="button"
                           disabled={!customDate}
                           onClick={() => handleCustomReschedule(task)}
-                          className="px-3 py-1 rounded bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-black font-medium text-xs"
+                          className="px-3 py-1 rounded bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-black font-semibold text-xs transition-colors cursor-pointer"
                         >
-                          Set
+                          Save
                         </button>
                       </div>
                     </div>
@@ -239,7 +235,6 @@ export const CatchUpModal: React.FC<CatchUpModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
-

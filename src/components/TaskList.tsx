@@ -5,8 +5,10 @@ import {
   RotateCcw,
   Plus
 } from 'lucide-react';
+import { AnimatePresence, m } from 'motion/react';
 import { Task, TaskFilter, TaskSort, CapacitySettings } from '../types';
 import { TaskCard } from './TaskCard';
+import { Collapse } from './ui/Collapse';
 import { getUrgencyInfo } from '../utils/date';
 import { calculateTaskScore } from '../utils/ranking';
 
@@ -150,8 +152,8 @@ export const TaskList: React.FC<TaskListProps> = ({
       </div>
 
       {/* Expanded Content */}
-      {isExpanded && (
-        <div className="space-y-4 animate-fade-in">
+      <Collapse isOpen={isExpanded}>
+        <div className="space-y-4 pt-2">
           {/* Catch-Up Older Items Banner (if any) */}
           {catchUpTasks.length > 0 && (
             <div className="p-3.5 rounded-lg border border-amber-500/30 bg-amber-950/20 space-y-2 text-xs">
@@ -263,22 +265,32 @@ export const TaskList: React.FC<TaskListProps> = ({
 
           {/* Task Cards List */}
           {filteredTasks.length > 0 ? (
-            <div className="space-y-3">
-              {filteredTasks.map((task, idx) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  index={idx}
-                  onToggleComplete={onToggleComplete}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  now={now}
-                  capacitySettings={capacitySettings}
-                  remainingEffort={remainingEffortMap ? remainingEffortMap[task.id] : undefined}
-                  onEmailInstructor={onEmailInstructor}
-                />
-              ))}
-            </div>
+            <m.div layout className="space-y-3">
+              <AnimatePresence initial={false}>
+                {filteredTasks.map((task, idx) => (
+                  <m.div
+                    key={task.id}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <TaskCard
+                      task={task}
+                      index={idx}
+                      onToggleComplete={onToggleComplete}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                      now={now}
+                      capacitySettings={capacitySettings}
+                      remainingEffort={remainingEffortMap ? remainingEffortMap[task.id] : undefined}
+                      onEmailInstructor={onEmailInstructor}
+                    />
+                  </m.div>
+                ))}
+              </AnimatePresence>
+            </m.div>
           ) : (
             <div className="p-8 text-center rounded-lg border border-white/10 bg-zinc-950/40 space-y-2 text-xs">
               <p className="text-zinc-400">
@@ -303,7 +315,7 @@ export const TaskList: React.FC<TaskListProps> = ({
             </div>
           )}
         </div>
-      )}
+      </Collapse>
     </div>
   );
 };

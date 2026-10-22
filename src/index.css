@@ -10,6 +10,11 @@
   --text-muted: #a1a1aa;
   --border-subtle: rgba(255, 255, 255, 0.1);
   --accent: #f97316;
+  --ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --duration-fast: 120ms;
+  --duration-med: 240ms;
+  --duration-slow: 420ms;
 }
 
 @media (prefers-color-scheme: light) {
@@ -36,6 +41,14 @@ body {
   overflow-x: hidden;
   max-width: 100vw;
   line-height: 1.5;
+}
+
+/* Tactile button press feedback */
+@media (prefers-reduced-motion: no-preference) {
+  button:active:not(:disabled) {
+    transform: scale(0.98);
+    transition: transform 100ms ease;
+  }
 }
 
 /* Accessible visible focus for all interactive elements */

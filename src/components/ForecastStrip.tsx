@@ -3,6 +3,7 @@ import { Calendar, Check, Sparkles } from 'lucide-react';
 import { Task, CapacitySettings } from '../types';
 import { calculateDailyLoads } from '../utils/capacity';
 import { simulateTaskDelay } from '../utils/forecast';
+import { Collapse } from './ui/Collapse';
 
 interface ForecastStripProps {
   tasks: Task[];
@@ -141,8 +142,9 @@ export const ForecastStrip: React.FC<ForecastStripProps> = ({
       </div>
 
       {/* Expanded Day Details & What-If Delay Simulator */}
-      {isExpanded && selectedDay && (
-        <div className="rounded-lg border border-white/15 bg-zinc-950 p-4 space-y-4 animate-fade-in text-xs">
+      <Collapse isOpen={isExpanded && selectedDay !== null}>
+        {selectedDay && (
+          <div className="rounded-lg border border-white/15 bg-zinc-950 p-4 space-y-4 text-xs mt-3">
           <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
             <div className="flex items-center space-x-2">
               <Calendar className="w-3.5 h-3.5 text-orange-400" />
@@ -283,8 +285,9 @@ export const ForecastStrip: React.FC<ForecastStripProps> = ({
               <span>{applySuccessMessage}</span>
             </div>
           )}
-        </div>
-      )}
+          </div>
+        )}
+      </Collapse>
     </section>
   );
 };

@@ -10,6 +10,7 @@ import {
   Database, 
   Trash2 
 } from 'lucide-react';
+import { AnimatePresence, m } from 'motion/react';
 
 interface HeaderProps {
   onOpenAddTask: () => void;
@@ -108,11 +109,16 @@ export const Header: React.FC<HeaderProps> = ({
               <MoreHorizontal className="w-4 h-4" />
             </button>
 
-            {isMenuOpen && (
-              <div
-                role="menu"
-                className="absolute right-0 mt-2 w-56 rounded-md bg-[#161616] border border-white/15 shadow-xl py-1 z-50 text-xs font-sans animate-fade-in"
-              >
+            <AnimatePresence>
+              {isMenuOpen && (
+                <m.div
+                  role="menu"
+                  initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                  transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute right-0 mt-2 w-56 rounded-md bg-[#161616] border border-white/15 shadow-xl py-1 z-50 text-xs font-sans origin-top-right"
+                >
                 <button
                   role="menuitem"
                   onClick={() => {
@@ -193,8 +199,9 @@ export const Header: React.FC<HeaderProps> = ({
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Clear everything</span>
                 </button>
-              </div>
-            )}
+                </m.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

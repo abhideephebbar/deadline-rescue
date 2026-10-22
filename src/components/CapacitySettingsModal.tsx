@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Clock, RotateCcw, Plus, Trash2 } from 'lucide-react';
 import { CapacitySettings, DayOfWeek, Task, BlockedTimeSlot } from '../types';
 import { calculateDailyLoads } from '../utils/capacity';
+import { Modal } from './ui/Modal';
 
 interface CapacitySettingsModalProps {
   isOpen: boolean;
@@ -42,19 +43,6 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
   const [newEnd, setNewEnd] = useState('15:00');
   const [newDays, setNewDays] = useState<DayOfWeek[]>(['mon', 'tue', 'wed', 'thu', 'fri']);
 
-  // Handle ESC key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
   const dailyLoads = calculateDailyLoads(tasks, settings, now, 7);
   const todayLoad = dailyLoads[0];
   const weeklyCapacity = Object.values(settings.dailyWorkHours).reduce((a, b) => a + b, 0);
@@ -84,31 +72,31 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="capacity-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm overflow-y-auto animate-fade-in"
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidthClass="max-w-2xl"
+      title="Study capacity & schedule"
     >
-      <div className="relative w-full max-w-2xl bg-[#121212] border border-white/15 text-white font-mono shadow-2xl p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+      <div className="p-6 sm:p-7 space-y-6 font-sans">
         {/* Modal Header */}
         <div className="flex items-start justify-between border-b border-white/10 pb-4">
           <div>
-            <div className="flex items-center space-x-2 text-orange-400 text-xs uppercase tracking-widest">
+            <div className="flex items-center space-x-2 text-orange-400 text-xs font-semibold uppercase tracking-wider">
               <Clock className="w-3.5 h-3.5" />
-              <span>CAPACITY &amp; SCHEDULE ENGINE</span>
+              <span>Study schedule</span>
             </div>
-            <h2 id="capacity-modal-title" className="font-display text-2xl sm:text-3xl text-white tracking-tight uppercase mt-1">
-              Workload Settings
+            <h2 className="text-xl font-bold text-white tracking-tight mt-1">
+              Daily study capacity
             </h2>
             <p className="text-xs text-zinc-400 mt-1">
-              Configure your realistic daily study limits and blocked commitments to prevent false buffers.
+              Set realistic study limits and blocked times so you never plan more hours than you have.
             </p>
           </div>
           <button
             onClick={onClose}
             aria-label="Close settings"
-            className="p-1.5 border border-white/10 text-zinc-400 hover:text-white hover:border-white/30 transition-colors"
+            className="p-1.5 rounded-lg border border-white/10 text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -116,29 +104,31 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
 
         {/* Live Today Telemetry Card */}
         {todayLoad && (
-          <div className={`p-4 border text-xs space-y-2 ${
-            todayLoad.status === 'overloaded'
-              ? 'border-red-500/40 bg-red-950/20 text-red-200'
-              : todayLoad.status === 'filling'
-                ? 'border-amber-500/40 bg-amber-950/20 text-amber-200'
-                : 'border-emerald-500/30 bg-emerald-950/15 text-emerald-200'
-          }`}>
-            <div className="flex items-center justify-between font-bold uppercase tracking-wider">
-              <span>TODAY'S WORKLOAD AUDIT</span>
-              <span className="px-2 py-0.5 border border-current text-[10px]">
-                {todayLoad.status.toUpperCase()}
+          <div
+            className={`p-4 rounded-xl border text-xs space-y-2 ${
+              todayLoad.status === 'overloaded'
+                ? 'border-red-500/30 bg-red-950/20 text-red-200'
+                : todayLoad.status === 'filling'
+                  ? 'border-amber-500/30 bg-amber-950/20 text-amber-200'
+                  : 'border-emerald-500/30 bg-emerald-950/15 text-emerald-200'
+            }`}
+          >
+            <div className="flex items-center justify-between font-semibold">
+              <span>Today's workload</span>
+              <span className="px-2 py-0.5 rounded text-[11px] font-medium uppercase tracking-wide bg-white/5">
+                {todayLoad.status}
               </span>
             </div>
             <div className="flex flex-wrap items-baseline justify-between gap-2 text-zinc-300">
               <div>
-                <span>Demand: </span>
+                <span>Planned: </span>
                 <span className="font-bold text-white">{todayLoad.demandHours}h</span>
-                <span> / Capacity: </span>
+                <span> · Capacity: </span>
                 <span className="font-bold text-white">{todayLoad.capacityHours}h</span>
               </div>
               <div className="text-[11px] text-zinc-400">
                 {todayLoad.remainingCapacity > 0
-                  ? `${todayLoad.remainingCapacity}h focus headroom remaining today`
+                  ? `${todayLoad.remainingCapacity}h available today`
                   : `Deficit: ${Math.abs(todayLoad.demandHours - todayLoad.capacityHours).toFixed(1)}h over capacity`}
               </div>
             </div>
@@ -146,10 +136,10 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
         )}
 
         {/* Available Work Hours Per Day */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-widest text-zinc-300 font-semibold">
-              DAILY AVAILABLE FOCUS HOURS ({weeklyCapacity}h / WEEK TOTAL)
+            <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+              Daily study hours ({weeklyCapacity}h / week total)
             </span>
           </div>
 
@@ -157,10 +147,10 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
             {DAYS_ORDER.map(({ key, label }) => {
               const hours = settings.dailyWorkHours[key] ?? 4;
               return (
-                <div key={key} className="p-3 border border-white/10 bg-black/40 space-y-2">
+                <div key={key} className="p-3 rounded-lg border border-white/10 bg-black/40 space-y-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-zinc-300 font-medium">{label}</span>
-                    <span className="text-orange-400 font-bold">{hours.toFixed(1)}h</span>
+                    <span className="text-orange-400 font-mono font-bold">{hours.toFixed(1)}h</span>
                   </div>
                   <input
                     type="range"
@@ -178,67 +168,67 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
           </div>
         </div>
 
-        {/* Blocked Times (Classes, Sleep) */}
+        {/* Blocked Times (Classes, Work) */}
         <div className="space-y-3 pt-2 border-t border-white/10">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-xs uppercase tracking-widest text-zinc-300 font-semibold block">
-                BLOCKED RECOVERY &amp; CLASS HOURS
+              <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider block">
+                Blocked class &amp; activity hours
               </span>
-              <span className="text-[11px] text-zinc-500">
-                These hours are subtracted so deadlines do not count sleep or lecture time as available.
+              <span className="text-[11px] text-zinc-400">
+                These hours are excluded from your available study time.
               </span>
             </div>
             {!isAddingBlock && (
               <button
                 onClick={() => setIsAddingBlock(true)}
                 type="button"
-                className="inline-flex items-center gap-1.5 border border-white/20 hover:border-orange-500 text-zinc-300 hover:text-white px-2.5 py-1 text-xs uppercase transition-colors"
+                className="inline-flex items-center gap-1.5 border border-white/15 hover:border-white/30 text-zinc-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
               >
-                <Plus className="w-3 h-3" />
-                <span>Add Block</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add block</span>
               </button>
             )}
           </div>
 
           {/* New Block Inline Form */}
           {isAddingBlock && (
-            <form onSubmit={handleCreateBlock} className="p-3 border border-orange-500/40 bg-zinc-950 space-y-3">
-              <div className="text-xs text-orange-400 uppercase tracking-wider font-bold">
-                New Blocked Window
+            <form onSubmit={handleCreateBlock} className="p-4 rounded-xl border border-orange-500/30 bg-black/40 space-y-3">
+              <div className="text-xs text-orange-400 font-semibold uppercase tracking-wider">
+                New blocked window
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <input
                   type="text"
-                  placeholder="LABEL (E.G. LAB, SHIFT)"
+                  placeholder="Label (e.g. Lab, Shift)"
                   value={newLabel}
                   onChange={(e) => setNewLabel(e.target.value)}
-                  className="px-2.5 py-1.5 bg-black border border-white/15 text-xs text-white uppercase focus:border-orange-500 focus:outline-none"
+                  className="px-3 py-1.5 bg-black border border-white/15 rounded-lg text-xs text-white focus:border-orange-500 focus:outline-none"
                   required
                 />
-                <div className="flex items-center gap-1 text-xs">
-                  <span className="text-zinc-500 text-[10px]">FROM:</span>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-zinc-500 text-[11px]">From:</span>
                   <input
                     type="time"
                     value={newStart}
                     onChange={(e) => setNewStart(e.target.value)}
-                    className="px-2 py-1 bg-black border border-white/15 text-xs text-white focus:outline-none"
+                    className="px-2 py-1 bg-black border border-white/15 rounded text-xs text-white focus:outline-none"
                   />
                 </div>
-                <div className="flex items-center gap-1 text-xs">
-                  <span className="text-zinc-500 text-[10px]">UNTIL:</span>
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-zinc-500 text-[11px]">Until:</span>
                   <input
                     type="time"
                     value={newEnd}
                     onChange={(e) => setNewEnd(e.target.value)}
-                    className="px-2 py-1 bg-black border border-white/15 text-xs text-white focus:outline-none"
+                    className="px-2 py-1 bg-black border border-white/15 rounded text-xs text-white focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Day selection pills */}
-              <div className="flex flex-wrap items-center gap-1 pt-1">
-                <span className="text-[10px] text-zinc-500 mr-1">DAYS:</span>
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[11px] text-zinc-500 mr-1">Days:</span>
                 {DAYS_ORDER.map(({ key, label }) => {
                   const isSelected = newDays.includes(key);
                   return (
@@ -246,10 +236,10 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
                       key={key}
                       type="button"
                       onClick={() => toggleDaySelection(key)}
-                      className={`px-2 py-0.5 text-[10px] uppercase border transition-colors ${
+                      className={`px-2 py-0.5 text-xs rounded border transition-colors ${
                         isSelected
-                          ? 'border-orange-500 bg-orange-500/20 text-orange-300 font-bold'
-                          : 'border-white/10 text-zinc-500 hover:text-zinc-300'
+                          ? 'border-orange-500 bg-orange-500/20 text-orange-300 font-medium'
+                          : 'border-white/10 text-zinc-400 hover:text-zinc-200'
                       }`}
                     >
                       {label.slice(0, 3)}
@@ -262,15 +252,15 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAddingBlock(false)}
-                  className="px-3 py-1 text-xs text-zinc-400 hover:text-white border border-transparent"
+                  className="px-3 py-1.5 text-xs text-zinc-400 hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1 text-xs bg-orange-500 text-black font-bold uppercase hover:bg-orange-400 transition-colors"
+                  className="px-3.5 py-1.5 text-xs rounded-lg bg-orange-500 text-black font-semibold hover:bg-orange-400 transition-colors cursor-pointer"
                 >
-                  Save Block
+                  Save block
                 </button>
               </div>
             </form>
@@ -284,21 +274,21 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
               return (
                 <div
                   key={slot.id}
-                  className="flex items-center justify-between p-2.5 border border-white/10 bg-black/30 text-xs"
+                  className="flex items-center justify-between p-2.5 rounded-lg border border-white/10 bg-black/30 text-xs"
                 >
                   <div className="space-y-0.5">
-                    <div className="font-bold text-white uppercase">{slot.label}</div>
+                    <div className="font-medium text-white">{slot.label}</div>
                     <div className="text-[11px] text-zinc-400 flex items-center space-x-2">
                       <span>{startFormatted} – {endFormatted}</span>
                       <span>•</span>
-                      <span className="uppercase text-orange-400/80">{slot.days.join(', ')}</span>
+                      <span className="capitalize text-orange-400/80">{slot.days.join(', ')}</span>
                     </div>
                   </div>
                   <button
                     onClick={() => onRemoveBlockedSlot(slot.id)}
                     type="button"
                     title={`Delete ${slot.label}`}
-                    className="p-1 text-zinc-500 hover:text-red-400 transition-colors"
+                    className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -316,18 +306,18 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
             className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors"
           >
             <RotateCcw className="w-3 h-3" />
-            <span>Reset to Student Defaults</span>
+            <span>Reset to student defaults</span>
           </button>
 
           <button
             onClick={onClose}
             type="button"
-            className="w-full sm:w-auto px-5 py-2 bg-orange-500 hover:bg-orange-400 text-black font-bold text-xs uppercase tracking-widest transition-colors"
+            className="w-full sm:w-auto px-5 py-2 rounded-lg bg-orange-500 hover:bg-orange-400 text-black font-semibold text-xs tracking-wide transition-colors cursor-pointer"
           >
-            Apply &amp; Close
+            Done
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
