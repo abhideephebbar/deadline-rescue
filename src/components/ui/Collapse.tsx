@@ -31,3 +31,4 @@ export const Collapse: React.FC<CollapseProps> = ({
     </AnimatePresence>
   );
 };
+
