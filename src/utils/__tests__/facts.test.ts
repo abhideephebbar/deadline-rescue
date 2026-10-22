@@ -70,3 +70,4 @@ describe('buildAppFacts', () => {
     expect(facts.today.isOnTrack).toBe(true);
   });
 });
+

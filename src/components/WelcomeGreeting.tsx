@@ -8,6 +8,7 @@ import {
   markFirstVisitSeen,
   GreetingActionType,
 } from '../utils/greeting';
+import { Glass } from './ui/Glass';
 
 interface WelcomeGreetingProps {
   facts: AppFacts;
@@ -48,7 +49,7 @@ export const WelcomeGreeting: React.FC<WelcomeGreetingProps> = ({
         transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
         className="overflow-hidden mb-6"
       >
-        <div className="relative p-4 sm:p-5 rounded-2xl bg-[#17171a] border border-white/10 shadow-sm space-y-3">
+        <Glass className="p-4 sm:p-5 space-y-3">
           {/* Header Row */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center space-x-2 text-orange-400">
@@ -66,7 +67,7 @@ export const WelcomeGreeting: React.FC<WelcomeGreetingProps> = ({
               type="button"
               onClick={handleDismiss}
               aria-label="Dismiss greeting"
-              className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer shrink-0"
+              className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
@@ -90,7 +91,7 @@ export const WelcomeGreeting: React.FC<WelcomeGreetingProps> = ({
               </button>
             ))}
           </div>
-        </div>
+        </Glass>
       </m.div>
     </AnimatePresence>
   );

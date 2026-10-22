@@ -38,16 +38,30 @@ npm test
 
 ## ✨ Features
 
-1. **Calm, Mobile-First Triage Interface**:
-   - Designed mobile-first at 375px and scaled cleanly across tablet and desktop.
-   - Answers *"What should I do right now?"* in under 3 seconds with a dedicated **"Now" card**.
-   - Includes one plain-language explanation of why the task is prioritized, a 10-minute starter micro-step, an inline focus timer with pause/stop/save controls, and a guilt-free **"Not today"** deferral action.
-   - Slim header with quick action to add tasks, access study capacity, import deadlines, reset your week, and clean up.
-   - Supportive **Status Sentence** replacing cluttered stat cards with actionable, plain guidance (e.g. *"You're about 2 hours short today. [See what to drop]"*).
-   - Compact **"Next up"** rows for the following 2–3 assignments.
-   - Compact **"This week"** 7-day forecast strip with inline expandability and the *"What if I move this?"* consequence simulator.
-   - Collapsible **"All tasks"** list tucked neatly below the fold to eliminate visual overwhelm.
-   - Full support for `prefers-color-scheme: light` and `prefers-reduced-motion`.
+1. **Streaming-Style Dashboard & Visual Architecture**:
+   - **Aurora Background**: 3 slowly drifting radial-gradient blobs driven by transform-only GPU-accelerated CSS keyframes, layered beneath a static SVG noise film-grain overlay (~0.04 opacity).
+   - **Workload Mood System**: Dynamic 7-day demand/capacity evaluation cross-fades smoothly over 1.2s between three atmospheric mood states: *Calm* (teal/emerald, <0.7 ratio), *Busy* (amber, 0.7–1.0 ratio), and *Overloaded* (warm red, >1.0 ratio).
+   - **Glass Surfaces**: High-performance translucent glass panels (`rgba(10,10,14,0.55)`) with `backdrop-filter: blur(20px) saturate(140%)`, 1px borders (`rgba(255,255,255,0.12)`), 24px corner radius, and solid fallbacks for unsupported engines.
+   - **Performance Guardrails**: Heavy backdrop blur strictly scoped to floating navigation, hero buttons, dropdown menus, and modals (never applied across repeated list items). Automatically pauses background animations when `document.hidden`. Includes a persistent **"Reduce effects"** toggle in the settings menu that activates automatically for `prefers-reduced-motion`.
+   - **Floating Navigation with Hash Sync**:
+     - Desktop: Floating glass pill positioned at top right with Today, Week, and Tasks tabs. The active tab is a crisp white pill sliding smoothly across tabs via shared `layoutId` physics. Includes direct Ask trigger, quick Add task button, and an animated glass settings menu.
+     - Mobile: Floating bottom navigation bar respecting device safe-area insets (`pb-safe`).
+     - No router library: Tab transitions are synced directly to the URL hash (`#today`, `#week`, `#tasks`) with cross-fading and vertical slide transitions via `<AnimatePresence>`.
+   - **Hero Carousel (Today View)**:
+     - Prominently showcases the top 3 ranked priority tasks as swipeable slides (no auto-advancing; accessible touch swipes, arrow keys, and carousel dots with an elongated active bar).
+     - Bold condensed typography (`Bebas Neue`, `clamp(56px, 11vw, 120px)`) layered with a faint watermark course code.
+     - 1-line grounded reason (under 90 characters) computed from real numbers.
+     - White pill "Start" button linked to stopwatch chrono controls, paired with a glass secondary pill for "Done" and expandable "Details" (10-minute kickoff, notes, Not today deferral, and overdue recovery).
+   - **Horizontal Task Rails**:
+     - Scroll-snap horizontal rails with section titles and left/right gradient edge fades.
+     - Cards (~260px wide) featuring course code chips, 2-line clamped titles, relative due text, and circular SVG progress rings tracking logged stopwatch time against estimated effort.
+     - Today view rails: *"Keep Going"* (incomplete tasks with logged time), *"Due Soon"* (tasks due in next 48h), and *"Catch Up"* (overdue items needing resolution). Empty rails hide automatically.
+   - **Full Week Workload Forecast (Week View)**:
+     - Large glass panel displaying all 7 days with demand vs. capacity fill gauges and status pills (*Clear*, *Balanced*, *Heavy*).
+     - Tapping any day reveals scheduled tasks and launches the interactive *"What if I move this?"* delay simulator with +1d, +2d, +3d shifts and instant plain-English consequence sentences.
+   - **Course-Grouped Task Manager (Tasks View)**:
+     - Search and course filter chips with active counts.
+     - All coursework grouped cleanly under uppercase course headers in responsive glass rows with quick edit, delete, complete, and instructor email actions.
 
 2. **Zero-Setup Clean Empty State & Explicit Demo Mode**:
    - First launch starts completely clean with zero pre-seeded fake tasks.

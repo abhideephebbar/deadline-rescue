@@ -106,6 +106,46 @@ body::-webkit-scrollbar-thumb:hover {
   background: #3f3f46;
 }
 
+/* Aurora Radial Drift Keyframes */
+@keyframes auroraBlob1 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(45px, -35px, 0) scale(1.08);
+  }
+}
+
+@keyframes auroraBlob2 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-40px, 30px, 0) scale(0.95);
+  }
+}
+
+@keyframes auroraBlob3 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(35px, 40px, 0) scale(1.05);
+  }
+}
+
+.animate-aurora-blob-1 {
+  animation: auroraBlob1 18s ease-in-out infinite;
+}
+
+.animate-aurora-blob-2 {
+  animation: auroraBlob2 22s ease-in-out infinite;
+}
+
+.animate-aurora-blob-3 {
+  animation: auroraBlob3 20s ease-in-out infinite;
+}
+
 /* Custom selection */
 ::selection {
   background: #f97316;
