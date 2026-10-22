@@ -17,6 +17,7 @@ import { InstructorEmailModal } from './components/InstructorEmailModal';
 import { ImportTasksModal } from './components/ImportTasksModal';
 import { CatchUpModal } from './components/CatchUpModal';
 import { ProductTour } from './components/ProductTour';
+import { AskModal } from './components/AskModal';
 import { useTasks } from './hooks/useTasks';
 import { useCapacity } from './hooks/useCapacity';
 import { useStopwatch } from './hooks/useStopwatch';
@@ -75,6 +76,7 @@ export function App() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   const [isCatchUpModalOpen, setIsCatchUpModalOpen] = useState(false);
+  const [isAskModalOpen, setIsAskModalOpen] = useState(false);
   const [emailTaskTarget, setEmailTaskTarget] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
@@ -196,10 +198,7 @@ export function App() {
       {/* Slim Header */}
       <Header
         onOpenAddTask={handleOpenAddModal}
-        onOpenAsk={() => {
-          // Placeholder for Phase 6 Ask assistant
-          console.info('Ask assistant opened');
-        }}
+        onOpenAsk={() => setIsAskModalOpen(true)}
         onOpenCapacity={() => setIsCapacityModalOpen(true)}
         onOpenImport={() => setIsImportModalOpen(true)}
         onOpenResetWeek={() => setIsResetWeekModalOpen(true)}
@@ -469,6 +468,22 @@ export function App() {
       <ProductTour
         isOpen={isTourActive}
         onClose={() => setIsTourActive(false)}
+      />
+
+      {/* Grounded "Ask" Schedule Assistant Modal */}
+      <AskModal
+        isOpen={isAskModalOpen}
+        onClose={() => setIsAskModalOpen(false)}
+        tasks={displayTasks}
+        remainingEffortMap={remainingEffortMap}
+        capacitySettings={capacitySettings}
+        now={currentTime}
+        onAddTask={(newTask) => addTask(newTask)}
+        onUpdateDailyHours={(day, hours) => updateDailyHours(day, hours)}
+        onDropTask={(taskId) => updateTask(taskId, { completed: true, dropped: true })}
+        onRescheduleTask={(taskId, newDueDateIso) =>
+          updateTask(taskId, { dueDateTime: newDueDateIso })
+        }
       />
     </div>
   );

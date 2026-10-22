@@ -130,7 +130,19 @@ npm test
      - Highlighted ambiguity banners alert students to verify cutoff times.
      - Checkbox selection allows students to deselect false positives or irrelevant lines with one click.
 
-10. **Task Management & Form Validation**:
+10. **Grounded Schedule Assistant ("Ask" Box)**:
+   - Plain-language triage assistant accessible via the **"Ask"** button in the header (modal on desktop, bottom sheet on mobile).
+   - Designed strictly for academic triage, not generic chat: answers questions grounded in the student's real deadlines, priorities, and study hours.
+   - **Supported Queries & Intents**:
+     - *Explain Ranking*: *"Why is this my top task?"* — provides transparent mathematical rationale based on effort, deadline, and working buffer.
+     - *Adjust Capacity*: *"I only have 2 hours tonight"* — simulates impact on today's deficit and proposes an update.
+     - *Consequence Testing*: *"What if I skip my lab?"* or *"What if I move my essay by 2 days?"* — computes exact hours freed or runs the live forecast simulation.
+     - *Natural Language Task Intake*: *"Add CS 350 lab due Friday"* — proposes parsed coursework with validated time and categories.
+   - **Strict Grounding & Confirmation Cards**: The AI model never directly alters user data or hallucinates numbers. The client validates the classified intent, executes local deterministic algorithms to calculate figures, and displays interactive **Confirmation Cards** (*"Set today's focus hours to 2h? [Update study hours]"*, *"Add 'CS 350 Lab' [Add task]"*) requiring explicit student consent.
+   - **Offline Rule-Based Fallback**: Seamlessly switches to offline rule matching if the serverless function is unreachable or no API key is configured.
+   - **Privacy First**: Ephemeral in-memory session; conversations and schedule snapshots are never stored remotely.
+
+11. **Task Management & Form Validation**:
    - Add and edit assignments with title, course code (e.g., `CS 350`), category (assignment, lab, exam, quiz, etc.), due date & time, estimated effort (hours), priority, and notes.
    - Real-time form validation with inline feedback.
    - Fast presets for college students (`Tonight 11:59 PM`, `Tomorrow 11:59 PM`, `In 2 Days`, `+0.5h`, `+1h`, `+2h`, etc.).
