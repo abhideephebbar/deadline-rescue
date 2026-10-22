@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { DashboardStats } from './components/DashboardStats';
 import { SmartRecommendationCard } from './components/SmartRecommendationCard';
@@ -29,6 +29,15 @@ export function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
+
+  // Global 30-second ticker to keep deadline countdowns, buffers, and urgency ranks fresh live
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleOpenAddModal = () => {
     setEditingTask(null);
@@ -149,12 +158,13 @@ export function App() {
             <SmartRecommendationCard
               tasks={tasks}
               onToggleComplete={toggleComplete}
+              now={currentTime}
             />
           </section>
 
           {/* Section 02: Telemetry Statistics */}
           <section aria-label="Telemetry Statistics">
-            <DashboardStats tasks={tasks} />
+            <DashboardStats tasks={tasks} now={currentTime} />
           </section>
 
           {/* Section 03: Stopwatch Feature */}
@@ -169,6 +179,7 @@ export function App() {
               onDelete={(id) => setDeleteCandidateId(id)}
               onOpenAddTask={handleOpenAddModal}
               onResetSamples={resetToSampleTasks}
+              now={currentTime}
             />
           </section>
 

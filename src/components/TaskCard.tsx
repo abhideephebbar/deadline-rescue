@@ -17,6 +17,7 @@ interface TaskCardProps {
   onToggleComplete: (id: string) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
+  now?: Date;
 }
 
 export const TaskCard: React.FC<TaskCardProps> = ({
@@ -25,8 +26,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onToggleComplete,
   onEdit,
   onDelete,
+  now = new Date(),
 }) => {
-  const urgency = getUrgencyInfo(task.dueDateTime, task.estimatedHours);
+  const urgency = getUrgencyInfo(task.dueDateTime, task.estimatedHours, now);
 
   // Technical priority color styles
   const priorityBadgeStyles: Record<string, string> = {

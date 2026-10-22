@@ -17,6 +17,7 @@ interface TaskListProps {
   onDelete: (id: string) => void;
   onOpenAddTask: () => void;
   onResetSamples: () => void;
+  now?: Date;
 }
 
 export const TaskList: React.FC<TaskListProps> = ({
@@ -26,6 +27,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   onDelete,
   onOpenAddTask,
   onResetSamples,
+  now = new Date(),
 }) => {
   const [filter, setFilter] = useState<TaskFilter>('all');
   const [selectedCourse, setSelectedCourse] = useState<string>('all');
@@ -69,7 +71,7 @@ export const TaskList: React.FC<TaskListProps> = ({
       if (filter === 'active') return !task.completed;
       if (filter === 'completed') return task.completed;
 
-      const urgency = getUrgencyInfo(task.dueDateTime, task.estimatedHours);
+      const urgency = getUrgencyInfo(task.dueDateTime, task.estimatedHours, now);
       if (filter === 'overdue') return !task.completed && urgency.isOverdue;
       if (filter === 'due-today') return !task.completed && urgency.hoursRemaining <= 24 && !urgency.isOverdue;
 
@@ -80,8 +82,8 @@ export const TaskList: React.FC<TaskListProps> = ({
       }
 
       if (sortBy === 'smart') {
-        const scoreA = calculateTaskScore(a).score;
-        const scoreB = calculateTaskScore(b).score;
+        const scoreA = calculateTaskScore(a, now).score;
+        const scoreB = calculateTaskScore(b, now).score;
         return scoreB - scoreA;
       }
 
@@ -103,7 +105,7 @@ export const TaskList: React.FC<TaskListProps> = ({
 
       return 0;
     });
-  }, [tasks, filter, selectedCourse, searchQuery, sortBy]);
+  }, [tasks, filter, selectedCourse, searchQuery, sortBy, now]);
 
   const activeCount = tasks.filter((t) => !t.completed).length;
   const completedCount = tasks.filter((t) => t.completed).length;
@@ -229,6 +231,7 @@ export const TaskList: React.FC<TaskListProps> = ({
               onToggleComplete={onToggleComplete}
               onEdit={onEdit}
               onDelete={onDelete}
+              now={now}
             />
           ))}
         </div>

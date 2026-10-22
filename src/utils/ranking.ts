@@ -1,7 +1,7 @@
 import { Task, Recommendation, Priority } from '../types';
 import { getUrgencyInfo, formatRelativeTime } from './date';
 
-const PRIORITY_WEIGHTS: Record<Priority, number> = {
+export const PRIORITY_WEIGHTS: Record<Priority, number> = {
   urgent: 3.5,
   high: 2.5,
   medium: 1.6,
@@ -9,126 +9,142 @@ const PRIORITY_WEIGHTS: Record<Priority, number> = {
 };
 
 /**
+ * Minimum effective time horizon (1.0 hour) to prevent division by zero for imminent deadlines.
+ */
+export const MIN_HORIZON_HOURS = 1.0;
+
+/**
+ * Calculates continuous risk factor for a task:
+ *   risk = remainingEffort / availableHours
+ *
+ * For upcoming deadlines (hoursRemaining >= MIN_HORIZON_HOURS):
+ *   risk = remainingEffort / hoursRemaining
+ *
+ * For imminent (0 < hoursRemaining < MIN_HORIZON_HOURS) and overdue (hoursRemaining <= 0):
+ *   risk = 1 + (remainingEffort - hoursRemaining) / MIN_HORIZON_HOURS
+ *
+ * Mathematical Invariants:
+ * 1. Non-deficit tasks (remainingEffort < hoursRemaining) ALWAYS produce risk < 1.0.
+ * 2. Deficit tasks (remainingEffort >= hoursRemaining > 0) ALWAYS produce risk >= 1.0.
+ * 3. Overdue tasks (hoursRemaining <= 0) ALWAYS produce risk >= 1.0 + remainingEffort / MIN_HORIZON_HOURS.
+ * 4. With all other fields equal:
+ *    - A closer deadline (smaller hoursRemaining) never lowers score.
+ *    - Higher priority never lowers score.
+ *    - Larger remaining effort never lowers score.
+ *    - Smaller buffer (hoursRemaining - remainingEffort) never lowers score.
+ * 5. A task in time deficit NEVER ranks below a non-deficit task of equal or lower priority:
+ *    Score(Deficit) >= P_deficit * 1000 >= P_nondeficit * 1000 > Score(NonDeficit).
+ */
+export function calculateRisk(remainingEffort: number, hoursRemaining: number): number {
+  const effort = Math.max(remainingEffort, 0.001);
+  if (hoursRemaining >= MIN_HORIZON_HOURS) {
+    return effort / hoursRemaining;
+  }
+  return 1 + (effort - hoursRemaining) / MIN_HORIZON_HOURS;
+}
+
+/**
  * Calculates a rescue urgency score for an incomplete task.
  * Higher score = higher recommended priority to work on right now.
+ * Accepts an optional reference timestamp `now` for testing and deterministic calculation.
  */
-export function calculateTaskScore(task: Task): {
+export function calculateTaskScore(
+  task: Task,
+  now: Date = new Date(),
+  remainingEffortOverride?: number
+): {
   score: number;
+  risk: number;
   headline: string;
   explanation: string;
   keyFactors: string[];
   actionAdvice: string;
 } {
-  const urgency = getUrgencyInfo(task.dueDateTime, task.estimatedHours);
+  const effort = typeof remainingEffortOverride === 'number'
+    ? Math.max(0, remainingEffortOverride)
+    : Math.max(0, task.estimatedHours);
+
+  const urgency = getUrgencyInfo(task.dueDateTime, effort, now);
   const priorityWeight = PRIORITY_WEIGHTS[task.priority] || 1.0;
   const hoursRemaining = urgency.hoursRemaining;
   const buffer = urgency.bufferHours;
 
-  let baseScore = 0;
+  const risk = calculateRisk(effort, hoursRemaining);
+  const rawScore = priorityWeight * risk * 1000;
+  const score = Math.round(rawScore);
+
   const factors: string[] = [];
   let headline = '';
   let explanation = '';
   let actionAdvice = '';
 
+  factors.push(`Priority: ${task.priority.toUpperCase()} (${priorityWeight}x weight)`);
+  factors.push(`Estimated workload: ${effort}h`);
+
   // 1. Overdue Handling
   if (urgency.isOverdue) {
-    const overdueHours = Math.abs(hoursRemaining);
-    baseScore = 12000 + (overdueHours * 50) + (priorityWeight * 500);
-    headline = 'Past Due — Urgent Remediation Required';
-    factors.push(`Overdue by ${formatRelativeTime(hoursRemaining).replace('Overdue by ', '')}`);
-    factors.push(`Priority: ${task.priority.toUpperCase()}`);
-    factors.push(`Estimated workload: ${task.estimatedHours} hour${task.estimatedHours === 1 ? '' : 's'}`);
-    explanation = `This task is overdue. Complete or submit as soon as possible to halt late deductions or academic penalties.`;
-    actionAdvice = `Dedicate your immediate focus here to close this open loop before moving on.`;
-    return { score: baseScore, headline, explanation, keyFactors: factors, actionAdvice };
+    headline = 'Past Due — Immediate Remediation';
+    factors.unshift(`Overdue by ${formatRelativeTime(hoursRemaining).replace('Overdue by ', '')}`);
+    explanation = `This task passed its deadline ${formatRelativeTime(hoursRemaining)}. Submit as soon as possible to halt further grade deductions or penalties.`;
+    actionAdvice = `Close this open loop immediately before addressing upcoming commitments.`;
   }
-
-  // 2. Time Deficit Check (estimated hours > hours remaining)
-  if (urgency.hasTimeDeficit) {
+  // 2. Time Deficit Check (effort > hours remaining before deadline)
+  else if (urgency.hasTimeDeficit) {
     const deficitHours = Math.abs(buffer).toFixed(1);
-    baseScore = 9000 + (Math.abs(buffer) * 200) + (priorityWeight * 400);
-    headline = 'Deadline Deficit — Start Immediately!';
-    factors.push(`Danger: Estimated effort (${task.estimatedHours}h) exceeds remaining time (${hoursRemaining.toFixed(1)}h)`);
-    factors.push(`${deficitHours}h estimated deficit`);
-    factors.push(`High impact: ${task.priority.toUpperCase()} priority`);
-    explanation = `You need approximately ${task.estimatedHours} hours of focus, but only ${hoursRemaining.toFixed(1)} hours remain until the deadline. Delaying will guarantee late submission.`;
-    actionAdvice = `Drop non-essential activities and begin right now to maximize your score.`;
-    return { score: baseScore, headline, explanation, keyFactors: factors, actionAdvice };
+    headline = 'Time Deficit — Start Immediately';
+    factors.unshift(`Time deficit: ${deficitHours}h shortfall (${effort}h needed vs ${hoursRemaining.toFixed(1)}h left)`);
+    explanation = `You need ~${effort} hours of work, but only ${hoursRemaining.toFixed(1)} hours remain before the deadline. Delaying will guarantee late submission.`;
+    actionAdvice = `Clear other distractions and begin work now to maximize what you can submit.`;
   }
-
-  // 3. Proximity Scoring (Non-linear exponential scale for approaching deadlines)
-  // Closer deadlines produce drastically higher base values
-  if (hoursRemaining <= 12) {
-    baseScore = 5000 + ((12 - hoursRemaining) * 250);
-    factors.push(`Due in under 12 hours (${formatRelativeTime(hoursRemaining)})`);
-  } else if (hoursRemaining <= 24) {
-    baseScore = 3000 + ((24 - hoursRemaining) * 100);
-    factors.push(`Due in under 24 hours (${formatRelativeTime(hoursRemaining)})`);
-  } else if (hoursRemaining <= 48) {
-    baseScore = 1500 + ((48 - hoursRemaining) * 40);
-    factors.push(`Due within 2 days`);
-  } else {
-    baseScore = Math.max(100, 1000 / (hoursRemaining / 12));
-    factors.push(`Due in ${formatRelativeTime(hoursRemaining)}`);
-  }
-
-  // Multiply by Priority
-  baseScore *= priorityWeight;
-  factors.push(`${task.priority.toUpperCase()} priority (${priorityWeight}x weight)`);
-
-  // 4. Buffer margin calculation (hours remaining - estimated hours)
-  if (buffer <= 3) {
-    baseScore += 1200;
-    factors.push(`Tight buffer: Only ${buffer.toFixed(1)}h safety margin remaining`);
-  } else if (buffer <= 8) {
-    baseScore += 500;
-    factors.push(`Moderate buffer: ${buffer.toFixed(1)}h margin`);
-  }
-
-  // 5. Quick Win vs. Deep Work adjustment
-  if (task.estimatedHours <= 1.0 && hoursRemaining <= 36) {
-    // Quick win boost for easily cleared roadblocks
-    baseScore += 350;
-    factors.push(`Quick win opportunity (${task.estimatedHours}h to complete)`);
-  } else if (task.estimatedHours >= 4.0 && hoursRemaining <= 48) {
-    // High effort task approaching deadline needs early start
-    baseScore += 450;
-    factors.push(`Substantial project (${task.estimatedHours}h effort required)`);
-  }
-
-  // Generate tailored explanation text
-  if (hoursRemaining <= 12) {
+  // 3. Imminent / Low Buffer
+  else if (hoursRemaining <= 12 || buffer <= 3) {
     headline = 'Critical Approaching Deadline';
-    explanation = `Due in ${formatRelativeTime(hoursRemaining).replace('Due in ', '')} with ${task.estimatedHours}h estimated effort. With only ${buffer.toFixed(1)}h of buffer margin, you must begin soon to avoid an all-nighter or rushed submission.`;
-    actionAdvice = `Block out ${task.estimatedHours} undisturbed hours immediately.`;
-  } else if (task.priority === 'urgent' || task.priority === 'high') {
-    headline = 'High Priority Focus Target';
-    explanation = `Marked as ${task.priority.toUpperCase()} priority for ${task.course || 'coursework'} and due ${formatRelativeTime(hoursRemaining)}. Tackling this ${task.estimatedHours}h task prevents compounding pressure later in the week.`;
-    actionAdvice = `Schedule a focused study block today to complete this before other minor items.`;
-  } else if (task.estimatedHours <= 1.5) {
-    headline = 'Fast Momentum Builder';
-    explanation = `At only ${task.estimatedHours}h estimated effort, clearing this task quickly delivers an early victory and clears mental bandwidth for heavier commitments.`;
+    factors.unshift(`Due in ${formatRelativeTime(hoursRemaining).replace('Due in ', '')} (Safety buffer: ${buffer.toFixed(1)}h)`);
+    explanation = `Due in ${formatRelativeTime(hoursRemaining).replace('Due in ', '')} with ${effort}h workload and a slim ${buffer.toFixed(1)}h buffer. Starting soon avoids rushed submission.`;
+    actionAdvice = `Block out ${effort} undisturbed hours today to finish without pressure.`;
+  }
+  // 4. Quick Win Opportunity
+  else if (effort <= 1.0 && hoursRemaining <= 36) {
+    headline = 'Quick Win Opportunity';
+    factors.unshift(`Quick win: only ${effort}h to complete`);
+    explanation = `At only ${effort}h estimated effort, clearing this task quickly delivers an early victory and clears mental bandwidth for heavier projects.`;
     actionAdvice = `Knock this out in one short sitting to maintain momentum.`;
-  } else {
+  }
+  // 5. High / Urgent Priority
+  else if (task.priority === 'urgent' || task.priority === 'high') {
+    headline = 'High Priority Academic Target';
+    factors.unshift(`Due in ${formatRelativeTime(hoursRemaining).replace('Due in ', '')}`);
+    explanation = `Marked as ${task.priority.toUpperCase()} priority for ${task.course || 'coursework'} with ${effort}h estimated workload.`;
+    actionAdvice = `Schedule a focused study block today to complete this before minor items.`;
+  }
+  // 6. Strategic / Default
+  else {
     headline = 'Next Strategic Commitment';
-    explanation = `Ranked as your highest strategic need based on a balance of ${task.priority} priority, estimated effort (${task.estimatedHours}h), and deadline (${formatRelativeTime(hoursRemaining)}).`;
+    factors.unshift(`Due in ${formatRelativeTime(hoursRemaining).replace('Due in ', '')}`);
+    explanation = `Ranked as your highest strategic need balancing ${task.priority} priority, workload (${effort}h), and deadline (${formatRelativeTime(hoursRemaining)}).`;
     actionAdvice = `Review guidelines and outline your first milestone now.`;
   }
 
   return {
-    score: Math.round(baseScore),
+    score,
+    risk,
     headline,
     explanation,
     keyFactors: factors,
-    actionAdvice
+    actionAdvice,
   };
 }
 
 /**
  * Evaluates all incomplete tasks and returns them sorted by recommendation score,
  * highlighting the top recommended task.
+ * Accepts an optional reference timestamp `now`.
  */
-export function getSmartRecommendations(tasks: Task[]): {
+export function getSmartRecommendations(
+  tasks: Task[],
+  now: Date = new Date(),
+  remainingEffortMap?: Record<string, number>
+): {
   topRecommendation: Recommendation | null;
   rankedQueue: Recommendation[];
 } {
@@ -139,8 +155,10 @@ export function getSmartRecommendations(tasks: Task[]): {
   }
 
   const recommendations: Recommendation[] = incompleteTasks.map((task) => {
-    const analysis = calculateTaskScore(task);
-    const urgency = getUrgencyInfo(task.dueDateTime, task.estimatedHours);
+    const remainingEffort = remainingEffortMap ? remainingEffortMap[task.id] : undefined;
+    const analysis = calculateTaskScore(task, now, remainingEffort);
+    const effort = typeof remainingEffort === 'number' ? remainingEffort : task.estimatedHours;
+    const urgency = getUrgencyInfo(task.dueDateTime, effort, now);
 
     return {
       task,
@@ -153,12 +171,27 @@ export function getSmartRecommendations(tasks: Task[]): {
     };
   });
 
-  // Sort descending by score
-  recommendations.sort((a, b) => b.score - a.score);
+  // Sort descending by score with deterministic tie-breakers
+  recommendations.sort((a, b) => {
+    if (b.score !== a.score) {
+      return b.score - a.score;
+    }
+    // Tie-breaker 1: Closer deadline first
+    const dueA = new Date(a.task.dueDateTime).getTime();
+    const dueB = new Date(b.task.dueDateTime).getTime();
+    if (dueA !== dueB) return dueA - dueB;
+
+    // Tie-breaker 2: Priority weight descending
+    const prioA = PRIORITY_WEIGHTS[a.task.priority] || 0;
+    const prioB = PRIORITY_WEIGHTS[b.task.priority] || 0;
+    if (prioA !== prioB) return prioB - prioA;
+
+    // Tie-breaker 3: Older task first (FIFO)
+    return new Date(a.task.createdAt).getTime() - new Date(b.task.createdAt).getTime();
+  });
 
   return {
     topRecommendation: recommendations[0] || null,
     rankedQueue: recommendations,
   };
 }
-

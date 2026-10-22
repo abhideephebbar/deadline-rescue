@@ -2,13 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import confetti from 'canvas-confetti';
 import { Task, Priority, TaskCategory } from '../types';
 import { generateSampleTasks } from '../data/sampleTasks';
-
-const STORAGE_KEY = 'deadline_rescue_tasks_v1';
+import { migrateStorage, TASKS_STORAGE_KEY, LEGACY_TASKS_KEY } from '../utils/storageMigration';
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>(() => {
+    // Run migration if needed
+    migrateStorage();
+
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(TASKS_STORAGE_KEY) || localStorage.getItem(LEGACY_TASKS_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -21,7 +23,7 @@ export function useTasks() {
     // First launch default sample tasks
     const initialSamples = generateSampleTasks();
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initialSamples));
+      localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(initialSamples));
     } catch {
       // storage unavailable
     }
@@ -31,7 +33,7 @@ export function useTasks() {
   // Save to localStorage whenever tasks change
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
     } catch (err) {
       console.error('Failed to save tasks to localStorage:', err);
     }

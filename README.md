@@ -38,12 +38,14 @@ npm run preview
    - Imminent deadlines (<24h and <48h counters).
    - Emergency Rescue Alerts (overdue count and estimated time deficit warnings).
 
-2. **Smart Task Recommendation Engine**:
-   - Evaluates all pending tasks against deadline proximity, priority weighting, and estimated workload.
-   - Computes real-time **Buffer Time** (`Time Left - Estimated Effort`).
-   - Flags dangerous time deficits (where estimated effort exceeds hours remaining).
-   - Generates an **AI-styled rationale** explaining *why* the top task should be tackled first.
-   - Includes an expandable **Full Priority Queue** showing the order of attack for all remaining tasks.
+2. **Continuous Risk Prioritization Engine**:
+   - Continuous rule-based risk formulation: $\text{risk} = \frac{\text{remaining effort}}{\text{available hours}}$.
+   - Guarantees that closer deadlines, higher priority, greater effort, or tighter buffers never lower score.
+   - Tasks in time deficit mathematically never rank below non-deficit tasks of equal or lower priority.
+   - Smooth, non-punitive continuous overdue handling (no arbitrary tier jumps or magic score offsets).
+   - Live 30-second interval ticker refreshes countdowns, buffers, and urgency badges in real time.
+   - Safe local storage schema versioning and seamless migration (`v1` to `v2`).
+   - Clear explainable rationale in supportive, non-scolding language.
 
 3. **Task Management & Form Validation**:
    - Add and edit assignments with title, course code (e.g., `CS 350`), category (assignment, lab, exam, quiz, etc.), due date & time, estimated effort (hours), priority, and notes.

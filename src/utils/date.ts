@@ -2,9 +2,13 @@ import { UrgencyInfo, UrgencyLevel } from '../types';
 
 /**
  * Calculates detailed urgency information based on due date and estimated hours.
+ * Accepts an optional reference `now` timestamp for deterministic calculations and live ticking.
  */
-export function getUrgencyInfo(dueDateTimeStr: string, estimatedHours: number = 1): UrgencyInfo {
-  const now = new Date();
+export function getUrgencyInfo(
+  dueDateTimeStr: string,
+  estimatedHours: number = 1,
+  now: Date = new Date()
+): UrgencyInfo {
   const dueDate = new Date(dueDateTimeStr);
   const diffMs = dueDate.getTime() - now.getTime();
   const hoursRemaining = diffMs / (1000 * 60 * 60);
@@ -89,8 +93,7 @@ export function formatRelativeTime(hoursRemaining: number): string {
 /**
  * Formats a date into a clean, human-readable format
  */
-export function formatReadableDate(date: Date): string {
-  const now = new Date();
+export function formatReadableDate(date: Date, now: Date = new Date()): string {
   const isCurrentYear = date.getFullYear() === now.getFullYear();
 
   const options: Intl.DateTimeFormatOptions = {

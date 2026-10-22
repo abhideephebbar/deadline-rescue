@@ -4,9 +4,10 @@ import { getUrgencyInfo } from '../utils/date';
 
 interface DashboardStatsProps {
   tasks: Task[];
+  now?: Date;
 }
 
-export const DashboardStats: React.FC<DashboardStatsProps> = ({ tasks }) => {
+export const DashboardStats: React.FC<DashboardStatsProps> = ({ tasks, now = new Date() }) => {
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.completed).length;
   const activeTasks = totalTasks - completedTasks;
@@ -20,7 +21,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ tasks }) => {
   let deficitCount = 0;
 
   incomplete.forEach((task) => {
-    const info = getUrgencyInfo(task.dueDateTime, task.estimatedHours);
+    const info = getUrgencyInfo(task.dueDateTime, task.estimatedHours, now);
     if (info.isOverdue) {
       overdueCount++;
     } else {
@@ -126,7 +127,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({ tasks }) => {
           <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-zinc-400">
             <span>[ 04 ] DANGER ZONE</span>
             <span className={overdueCount > 0 || deficitCount > 0 ? 'text-red-400 font-bold' : 'text-zinc-400'}>
-              {overdueCount > 0 ? 'DEFICIT CRITICAL' : 'NOMINAL'}
+              {overdueCount > 0 ? 'OVERDUE CRITICAL' : deficitCount > 0 ? 'DEFICIT CRITICAL' : 'NOMINAL'}
             </span>
           </div>
 

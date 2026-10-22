@@ -17,14 +17,16 @@ import { BitmapChevron } from './BitmapChevron';
 interface SmartRecommendationCardProps {
   tasks: Task[];
   onToggleComplete: (id: string) => void;
+  now?: Date;
 }
 
 export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = ({
   tasks,
   onToggleComplete,
+  now = new Date(),
 }) => {
   const [showFullQueue, setShowFullQueue] = useState(false);
-  const { topRecommendation, rankedQueue } = getSmartRecommendations(tasks);
+  const { topRecommendation, rankedQueue } = getSmartRecommendations(tasks, now);
 
   // If no incomplete tasks
   if (!topRecommendation) {
