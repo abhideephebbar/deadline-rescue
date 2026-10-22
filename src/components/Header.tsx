@@ -73,6 +73,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center space-x-2 sm:space-x-2.5">
           {/* Ask Button (Wired in Phase 6) */}
           <button
+            id="tour-ask-button"
             onClick={onOpenAsk}
             type="button"
             className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-md border border-white/15 hover:border-white/30 text-zinc-300 hover:text-white text-xs font-medium transition-colors bg-white/5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
@@ -84,6 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Add Task Primary Action */}
           <button
+            id="tour-add-task"
             onClick={onOpenAddTask}
             type="button"
             className="inline-flex items-center space-x-1 px-3.5 py-1.5 rounded-md bg-orange-500 hover:bg-orange-400 text-black text-xs font-semibold tracking-wide transition-colors shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
@@ -95,6 +97,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Overflow "..." Menu */}
           <div className="relative" ref={menuRef}>
             <button
+              id="tour-menu-button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               type="button"
               aria-label="More options"

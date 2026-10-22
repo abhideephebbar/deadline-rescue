@@ -147,10 +147,15 @@ npm test
    - Filter by status (`All`, `Pending`, `Due Today`, `Overdue`, `Completed`) and Course code.
    - Sort by Smart Rescue Priority, Deadline (Soonest first), Priority level, or Effort.
 
-13. **Persistence & Sample Data**:
-   - Persisted seamlessly via `localStorage` across page refreshes.
-   - Loaded with realistic college coursework upon first visit.
-   - "Reset Samples" button for instant testing.
+13. **Accessible Product Tour (Tour Mode)**:
+   - 5-step focused walkthrough highlighting: *Add or paste deadlines*, *The "Now" card*, *7-day workload forecast*, *Ask in plain language*, and the *Tools & study capacity* menu.
+   - **In-Memory Demo Dataset**: Runs on an ephemeral preview dataset that is never written to `localStorage`. Exiting the tour immediately restores the student's real task state with zero data mutation.
+   - Accessible keyboard controls (Escape to close, Arrow keys to navigate, focus trap) with graceful off-screen element handling.
+   - Persistent `tour seen` flag ensures new students are invited once without nagging returning users.
+
+14. **Persistence & Storage Architecture**:
+   - Persisted seamlessly via `localStorage` with versioned schema migrations (`v1` to `v2`).
+   - Clean empty state on first launch with on-demand demo data loading via the **"..."** menu.
 
 ---
 

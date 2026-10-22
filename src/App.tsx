@@ -16,6 +16,7 @@ import { ResetWeekModal } from './components/ResetWeekModal';
 import { InstructorEmailModal } from './components/InstructorEmailModal';
 import { ImportTasksModal } from './components/ImportTasksModal';
 import { CatchUpModal } from './components/CatchUpModal';
+import { ProductTour } from './components/ProductTour';
 import { useTasks } from './hooks/useTasks';
 import { useCapacity } from './hooks/useCapacity';
 import { useStopwatch } from './hooks/useStopwatch';
@@ -24,8 +25,9 @@ import { getCategoryCalibrations } from './utils/calibration';
 import { getSmartRecommendations } from './utils/ranking';
 import { getStatusSentence } from './utils/statusSentence';
 import { isSampleTaskSet, isSampleBannerDismissed, dismissSampleBanner } from './utils/sampleDetection';
+import { generateTourDemoTasks } from './utils/tour';
 import { Task, Priority, TaskCategory } from './types';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Compass } from 'lucide-react';
 
 export function App() {
   const {
@@ -50,16 +52,20 @@ export function App() {
 
   const stopwatch = useStopwatch();
 
+  const [isTourActive, setIsTourActive] = useState(false);
+  const tourDemoTasks = useMemo(() => generateTourDemoTasks(), []);
+  const displayTasks = isTourActive ? tourDemoTasks : tasks;
+
   // Subtract logged stopwatch time to determine real remaining effort for ranking & display
   const remainingEffortMap = useMemo(
-    () => getRemainingEffortMap(tasks, stopwatch.savedSessions),
-    [tasks, stopwatch.savedSessions]
+    () => getRemainingEffortMap(displayTasks, stopwatch.savedSessions),
+    [displayTasks, stopwatch.savedSessions]
   );
 
   // Calibrate per-category estimate accuracy from completed tasks with logged sessions
   const calibrations = useMemo(
-    () => getCategoryCalibrations(tasks, stopwatch.savedSessions),
-    [tasks, stopwatch.savedSessions]
+    () => getCategoryCalibrations(displayTasks, stopwatch.savedSessions),
+    [displayTasks, stopwatch.savedSessions]
   );
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -84,8 +90,8 @@ export function App() {
 
   // Compute smart recommendations
   const { topRecommendation, rankedQueue, catchUpQueue } = useMemo(
-    () => getSmartRecommendations(tasks, currentTime, remainingEffortMap, capacitySettings),
-    [tasks, currentTime, remainingEffortMap, capacitySettings]
+    () => getSmartRecommendations(displayTasks, currentTime, remainingEffortMap, capacitySettings),
+    [displayTasks, currentTime, remainingEffortMap, capacitySettings]
   );
 
   // Following 2-3 tasks for "Next up"
@@ -96,15 +102,15 @@ export function App() {
 
   // Plain supportive status sentence
   const statusSentence = useMemo(
-    () => getStatusSentence(tasks, capacitySettings, currentTime),
-    [tasks, capacitySettings, currentTime]
+    () => getStatusSentence(displayTasks, capacitySettings, currentTime),
+    [displayTasks, capacitySettings, currentTime]
   );
 
   const [isDemoBannerDismissedState, setIsDemoBannerDismissedState] = useState(() => isSampleBannerDismissed());
 
   const showDemoBanner = useMemo(() => {
-    return !isDemoBannerDismissedState && isSampleTaskSet(tasks);
-  }, [isDemoBannerDismissedState, tasks]);
+    return !isTourActive && !isDemoBannerDismissedState && isSampleTaskSet(tasks);
+  }, [isTourActive, isDemoBannerDismissedState, tasks]);
 
   const handleClearDemoTasks = () => {
     clearAllTasks();
@@ -180,10 +186,10 @@ export function App() {
   // Active task for mini-timer
   const activeTimerTask = useMemo(() => {
     if (stopwatch.selectedTaskId) {
-      return tasks.find((t) => t.id === stopwatch.selectedTaskId) || null;
+      return displayTasks.find((t) => t.id === stopwatch.selectedTaskId) || null;
     }
     return topRecommendation?.task || null;
-  }, [stopwatch.selectedTaskId, tasks, topRecommendation]);
+  }, [stopwatch.selectedTaskId, displayTasks, topRecommendation]);
 
   return (
     <div className="min-h-screen bg-[#090909] text-zinc-100 font-sans selection:bg-orange-500 selection:text-black antialiased transition-colors">
@@ -197,10 +203,7 @@ export function App() {
         onOpenCapacity={() => setIsCapacityModalOpen(true)}
         onOpenImport={() => setIsImportModalOpen(true)}
         onOpenResetWeek={() => setIsResetWeekModalOpen(true)}
-        onTakeTour={() => {
-          // Placeholder for Phase 5 Product Tour
-          console.info('Tour requested');
-        }}
+        onTakeTour={() => setIsTourActive(true)}
         onLoadDemoData={resetToSampleTasks}
         onClearEverything={() => setIsClearConfirmOpen(true)}
         weeklyCapacityHours={totalWeeklyCapacityHours}
@@ -208,6 +211,16 @@ export function App() {
 
       {/* Main Container: Mobile-first 375px -> 768px */}
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
+        {/* Tour Mode Indicator Badge */}
+        {isTourActive && (
+          <div className="flex items-center justify-center animate-fade-in">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-medium">
+              <Compass className="w-3.5 h-3.5" />
+              <span>Tour mode — viewing preview data</span>
+            </div>
+          </div>
+        )}
+
         {/* Optional Demo Tasks Detection Banner */}
         {showDemoBanner && (
           <DemoTaskBanner
@@ -216,12 +229,12 @@ export function App() {
           />
         )}
 
-        {tasks.length === 0 ? (
+        {displayTasks.length === 0 ? (
           /* Clean Empty State when user has 0 tasks */
           <EmptyState
             onOpenAddTask={handleOpenAddModal}
             onOpenImport={() => setIsImportModalOpen(true)}
-            onTakeTour={resetToSampleTasks}
+            onTakeTour={() => setIsTourActive(true)}
           />
         ) : (
           <>
@@ -276,9 +289,9 @@ export function App() {
             )}
 
             {/* 4. This Week Compact Forecast Strip with Consequence Simulator */}
-            <section aria-label="Weekly workload forecast">
+            <section id="tour-forecast" aria-label="Weekly workload forecast">
               <ForecastStrip
-                tasks={tasks}
+                tasks={displayTasks}
                 capacitySettings={capacitySettings}
                 now={currentTime}
                 onUpdateTaskDueDate={(taskId, newDueDate) => {
@@ -290,7 +303,7 @@ export function App() {
             {/* 5. Collapsible All Tasks List */}
             <section aria-label="All coursework">
               <TaskList
-                tasks={tasks}
+                tasks={displayTasks}
                 onToggleComplete={toggleComplete}
                 onEdit={handleOpenEditModal}
                 onDelete={(id) => setDeleteCandidateId(id)}
@@ -450,6 +463,12 @@ export function App() {
         onClose={() => setIsImportModalOpen(false)}
         onImportTasks={handleImportTasks}
         now={currentTime}
+      />
+
+      {/* Product Onboarding Tour */}
+      <ProductTour
+        isOpen={isTourActive}
+        onClose={() => setIsTourActive(false)}
       />
     </div>
   );
