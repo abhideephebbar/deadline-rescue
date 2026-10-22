@@ -28,6 +28,12 @@ npm run build
 npm run preview
 ```
 
+### Running Automated Tests
+```bash
+# Run unit test suite (Vitest)
+npm test
+```
+
 ---
 
 ## ✨ Features
