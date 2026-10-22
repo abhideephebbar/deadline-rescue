@@ -115,9 +115,14 @@ npm test
      - Runs locally in the browser with no backend or external network connection required.
      - High-precision regex pattern matching for course codes (`CS 350`, `MATH 101`, `ECON 201`), dates (`Oct 28`, `Friday 11:59pm`, `10/30`, `tomorrow at 5pm`), categories (`assignment`, `lab`, `quiz`, `project`, `exam`, `reading`), and effort keywords (`~4h`, `2.5 hours`).
      - **Ambiguity Detection**: Explicitly flags ambiguous dates (e.g. only a weekday mentioned, missing cutoff times, or unstated years) for student review rather than silently guessing.
-   - **Optional Serverless Gemini AI Parser (`api/parse-tasks.ts`)**:
-     - Hosted on Vercel as a secure serverless function that uses Google Gemini 2.5 Flash for natural language parsing of complex, conversational text.
-     - Keeps credentials strictly server-side: `GEMINI_API_KEY` is never bundled into client JavaScript.
+   - **Hardened Serverless Gemini AI Parser (`api/parse-tasks.ts` & `api/_lib/guard.ts`)**:
+     - Hosted on Vercel as a secure, hardened serverless function using Google Gemini 2.5 Flash for natural language parsing of complex, conversational text.
+     - **Strict Input Limits**: Enforces a strict 6,000-character payload ceiling, returning clear 400 responses for oversized requests.
+     - **Same-Origin Enforcement**: Rejects cross-origin access (no wildcard CORS) to prevent unauthorized API reuse.
+     - **Per-IP Rate Limiting & Daily Usage Cap**: In-memory token-bucket limiter throttles abuse, supported by configurable global daily caps (`GLOBAL_DAILY_LIMIT`) to protect budgets.
+     - **Secure Header Authentication**: Passes credentials exclusively via the `x-goog-api-key` HTTP header (never in URL query strings) and redacts keys and raw prompts from logs.
+     - **Prompt Injection Hardening**: Delimits untrusted input inside `<untrusted_student_input>` tags with explicit model instructions to ignore embedded commands.
+     - **Server-Side Schema Validation**: Validates all model JSON on the server against strict types, ranges (0.25h to 40h), and allowed enums before returning data to the client.
      - **Seamless Fallback**: If the serverless endpoint is offline, rate-limited, or no API key is set, the app instantly falls back to the rule-based engine with zero interruption.
    - **Editable Review Table**:
      - Clean tabular review interface before items hit the priority radar.
