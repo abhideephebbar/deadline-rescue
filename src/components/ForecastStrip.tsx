@@ -179,7 +179,7 @@ export const ForecastStrip: React.FC<ForecastStripProps> = ({
                   >
                     <div className="min-w-0">
                       <div className="flex items-center space-x-2">
-                        <span className="font-bold text-zinc-300 text-[11px] bg-white/5 border border-white/10 px-1.5 py-0.2 rounded">
+                        <span className="font-bold text-zinc-300 text-[11px] bg-white/5 border border-white/10 px-1.5 py-0.2 rounded whitespace-nowrap shrink-0">
                           {task.course}
                         </span>
                         <span className="font-medium text-white truncate text-xs">

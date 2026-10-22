@@ -94,7 +94,7 @@ export const NowCard: React.FC<NowCardProps> = ({
       {/* Task Headline & Metadata */}
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold text-white bg-white/10 px-2 py-0.5 rounded">
+          <span className="text-xs font-bold text-white bg-white/10 px-2 py-0.5 rounded whitespace-nowrap shrink-0">
             {task.course}
           </span>
           <span className="text-xs text-zinc-400 capitalize">
@@ -204,7 +204,7 @@ export const NowCard: React.FC<NowCardProps> = ({
               className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-400 text-black font-semibold text-sm transition-colors shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
             >
               <Play className="w-4 h-4 fill-current" />
-              <span>Start (10 min kickoff)</span>
+              <span>Start</span>
             </button>
           )}
         </div>

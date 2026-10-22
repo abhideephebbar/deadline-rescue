@@ -100,7 +100,7 @@ export const CatchUpModal: React.FC<CatchUpModalProps> = ({
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center space-x-2 mb-1">
-                        <span className="text-[10px] font-bold text-zinc-300 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] font-bold text-zinc-300 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                           {task.course}
                         </span>
                         <span className="text-[11px] text-amber-400/90 flex items-center space-x-1 font-mono">

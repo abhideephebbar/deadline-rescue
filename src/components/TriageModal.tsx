@@ -127,7 +127,7 @@ export const TriageModal: React.FC<TriageModalProps> = ({
                       </div>
                     </div>
                     <div className="text-[10px] text-zinc-500 flex items-center space-x-2">
-                      <span className="px-1 border border-white/10 text-zinc-400">{task.course}</span>
+                      <span className="px-1 border border-white/10 text-zinc-400 whitespace-nowrap shrink-0">{task.course}</span>
                       <span>•</span>
                       <span className="uppercase text-red-400">{task.priority}</span>
                     </div>
@@ -189,7 +189,7 @@ export const TriageModal: React.FC<TriageModalProps> = ({
                       </div>
                     </div>
                     <div className="text-[10px] text-zinc-500 flex items-center space-x-2">
-                      <span className="px-1 border border-white/10 text-zinc-400">{task.course}</span>
+                      <span className="px-1 border border-white/10 text-zinc-400 whitespace-nowrap shrink-0">{task.course}</span>
                       <span>•</span>
                       <span className="uppercase text-amber-400">{task.priority}</span>
                     </div>
@@ -238,7 +238,7 @@ export const TriageModal: React.FC<TriageModalProps> = ({
                       </div>
                     </div>
                     <div className="text-[10px] text-zinc-500 flex items-center space-x-2">
-                      <span className="px-1 border border-white/10 text-zinc-400">{task.course}</span>
+                      <span className="px-1 border border-white/10 text-zinc-400 whitespace-nowrap shrink-0">{task.course}</span>
                       <span>•</span>
                       <span className="uppercase text-blue-400">{task.priority}</span>
                     </div>

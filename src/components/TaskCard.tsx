@@ -77,7 +77,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <div className="min-w-0 flex-1">
             {/* Metadata row */}
             <div className="flex flex-wrap items-center gap-1.5 text-xs mb-1">
-              <span className="font-bold text-zinc-200 bg-white/5 border border-white/10 px-1.5 py-0.2 rounded text-[11px]">
+              <span className="font-bold text-zinc-200 bg-white/5 border border-white/10 px-1.5 py-0.2 rounded text-[11px] whitespace-nowrap shrink-0">
                 {task.course || 'GENERAL'}
               </span>
 

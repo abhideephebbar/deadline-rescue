@@ -91,7 +91,7 @@ export const InstructorEmailModal: React.FC<InstructorEmailModalProps> = ({
           <div className="space-y-0.5">
             <span className="text-[10px] uppercase text-zinc-500 tracking-wider">TARGET COURSEWORK:</span>
             <div className="flex items-center space-x-2">
-              <span className="px-1.5 border border-white/20 text-orange-400 font-bold">{task.course}</span>
+              <span className="px-1.5 border border-white/20 text-orange-400 font-bold whitespace-nowrap shrink-0">{task.course}</span>
               <span className="font-bold text-white uppercase">{task.title}</span>
             </div>
           </div>

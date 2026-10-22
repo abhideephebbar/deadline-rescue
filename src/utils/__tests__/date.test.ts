@@ -94,6 +94,30 @@ describe('Date & Urgency Utilities', () => {
       expect(formatRelativeTime(-2.5)).toBe('Overdue by 2h 30m');
       expect(formatRelativeTime(-25.0)).toBe('Overdue by 1d 1h');
     });
+
+    it('correctly rounds edge cases without 60m or 24h overflow', () => {
+      // 21.9999h -> 22h, never "21h 60m"
+      expect(formatRelativeTime(21.9999)).toBe('Due in 22h');
+      expect(formatRelativeTime(-21.9999)).toBe('Overdue by 22h');
+
+      // 23.9999h -> 1 day, never "24h" or "23h 60m"
+      expect(formatRelativeTime(23.9999)).toBe('Due in 1 day');
+      expect(formatRelativeTime(-23.9999)).toBe('Overdue by 1 day');
+
+      // 0.9999h -> 1h
+      expect(formatRelativeTime(0.9999)).toBe('Due in 1h');
+      expect(formatRelativeTime(-0.9999)).toBe('Overdue by 1h');
+
+      // 47.9999h -> 2 days
+      expect(formatRelativeTime(47.9999)).toBe('Due in 2 days');
+      expect(formatRelativeTime(-47.9999)).toBe('Overdue by 2 days');
+
+      // Exact boundaries
+      expect(formatRelativeTime(1.0)).toBe('Due in 1h');
+      expect(formatRelativeTime(-1.0)).toBe('Overdue by 1h');
+      expect(formatRelativeTime(24.0)).toBe('Due in 1 day');
+      expect(formatRelativeTime(-24.0)).toBe('Overdue by 1 day');
+    });
   });
 
   describe('formatReadableDate', () => {

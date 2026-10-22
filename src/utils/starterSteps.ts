@@ -2,30 +2,34 @@ import { TaskCategory } from '../types';
 
 /**
  * Concrete, low-barrier 10-minute starter step templates by category.
- * Designed to eliminate activation energy and procrastination by focusing
- * strictly on the immediate initial milestone.
+ * Formatted as one short, clean imperative sentence without repeating full task titles.
  */
-export const STARTER_TEMPLATES: Record<TaskCategory, (title: string, course: string) => string> = {
-  assignment: (title, course) =>
-    `Open the prompt for "${title}" (${course}) and write down the 3 core questions or requirements on scratch paper.`,
-  lab: (title, course) =>
-    `Open your IDE / terminal for "${title}" (${course}), pull the starter code, and verify that the base environment or test suite compiles.`,
-  project: (title, course) =>
-    `Break "${title}" (${course}) into 3 bullet milestones and write the blank outline file or project skeleton.`,
-  exam: (title, course) =>
-    `Scan the exam topics for "${title}" (${course}) and write down the top 3 formulas or concepts you feel least confident about.`,
-  reading: (title, course) =>
-    `Open "${title}" (${course}), skim the main section headings, bold terms, and chapter summary questions before reading page one.`,
-  quiz: (title, course) =>
-    `Pull up lecture notes for "${title}" (${course}) and spend 10 minutes highlighting key definitions.`,
-  other: (title, course) =>
-    `Open your workspace for "${title}" (${course}), close distracting browser tabs, and write your first 2 sentences or initial bullet point.`,
+export const STARTER_TEMPLATES: Record<TaskCategory, (course?: string) => string> = {
+  project: () =>
+    'Write 3 milestones and create the empty project file.',
+  assignment: () =>
+    'Read the questions and outline your answer to the first one.',
+  exam: () =>
+    'Pick one topic and write down 5 things you remember.',
+  lab: () =>
+    'Pull the starter code and verify that the base environment compiles.',
+  reading: () =>
+    'Skim the main section headings and chapter summary questions.',
+  quiz: () =>
+    'Review your notes and highlight key definitions for 10 minutes.',
+  other: () =>
+    'Open your workspace, close distracting tabs, and write the first bullet point.',
 };
 
 /**
- * Generates a concrete first step of about 10 minutes based on task category, title, and course.
+ * Generates a concrete first step of about 10 minutes based on task category.
+ * Never repeats the full task title.
  */
-export function getStarterStep(category: TaskCategory, title: string = 'this task', course: string = 'Coursework'): string {
+export function getStarterStep(
+  category: TaskCategory,
+  _title?: string,
+  course?: string
+): string {
   const templateFn = STARTER_TEMPLATES[category] || STARTER_TEMPLATES.assignment;
-  return templateFn(title, course);
+  return templateFn(course);
 }

@@ -89,8 +89,8 @@ export function formatRelativeTime(hoursRemaining: number): string {
     return isPast ? `Overdue by ${minText}` : `Due in ${minText}`;
   }
 
-  const hours = Math.floor(absHours);
-  const minutes = Math.round((absHours - hours) * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
 
   if (hours < 24) {
     const timeText = minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;

@@ -5,27 +5,41 @@ import { TaskCategory } from '../../types';
 describe('Start Now 10-Minute Starter Steps', () => {
   const categories: TaskCategory[] = ['assignment', 'lab', 'project', 'exam', 'reading', 'quiz', 'other'];
 
-  it('provides a concrete, actionable starter template for every category', () => {
+  it('provides a short, imperative sentence for every category', () => {
     for (const cat of categories) {
-      const step = getStarterStep(cat, 'Homework 4', 'CS 350');
+      const step = getStarterStep(cat, 'Homework 4: Giant Long Title With Many Words', 'CS 350');
       expect(typeof step).toBe('string');
-      expect(step.length).toBeGreaterThan(25);
-      expect(step).toContain('CS 350');
+      expect(step.length).toBeGreaterThan(15);
+      // Invariant: Never repeats the full task title
+      expect(step).not.toContain('Giant Long Title');
+      expect(step).not.toContain('"');
     }
   });
 
-  it('tailors assignment kickoff to outlining questions', () => {
-    const step = getStarterStep('assignment', 'P-Set 3', 'MATH 220');
-    expect(step).toContain('scratch paper');
+  it('matches required templates for project, assignment, and exam', () => {
+    expect(getStarterStep('project')).toBe(
+      'Write 3 milestones and create the empty project file.'
+    );
+    expect(getStarterStep('assignment')).toBe(
+      'Read the questions and outline your answer to the first one.'
+    );
+    expect(getStarterStep('exam')).toBe(
+      'Pick one topic and write down 5 things you remember.'
+    );
   });
 
-  it('tailors lab kickoff to environment and test suite verification', () => {
-    const step = getStarterStep('lab', 'Kernel Threads', 'CS 350');
-    expect(step).toContain('starter code');
-  });
-
-  it('tailors reading kickoff to skimming headings', () => {
-    const step = getStarterStep('reading', 'Chapter 4', 'BIO 101');
-    expect(step).toContain('skim');
+  it('provides clean steps for lab, reading, quiz, and other', () => {
+    expect(getStarterStep('lab')).toBe(
+      'Pull the starter code and verify that the base environment compiles.'
+    );
+    expect(getStarterStep('reading')).toBe(
+      'Skim the main section headings and chapter summary questions.'
+    );
+    expect(getStarterStep('quiz')).toBe(
+      'Review your notes and highlight key definitions for 10 minutes.'
+    );
+    expect(getStarterStep('other')).toBe(
+      'Open your workspace, close distracting tabs, and write the first bullet point.'
+    );
   });
 });
