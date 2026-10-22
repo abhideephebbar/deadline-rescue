@@ -13,21 +13,15 @@ export function useTasks() {
       const stored = localStorage.getItem(TASKS_STORAGE_KEY) || localStorage.getItem(LEGACY_TASKS_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       }
     } catch (err) {
       console.error('Failed to load tasks from localStorage:', err);
     }
-    // First launch default sample tasks
-    const initialSamples = generateSampleTasks();
-    try {
-      localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(initialSamples));
-    } catch {
-      // storage unavailable
-    }
-    return initialSamples;
+    // Start with zero tasks on first launch. No auto-seeding.
+    return [];
   });
 
   // Save to localStorage whenever tasks change

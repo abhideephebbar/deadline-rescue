@@ -6,6 +6,8 @@ import { NextUpList } from './components/NextUpList';
 import { ForecastStrip } from './components/ForecastStrip';
 import { TaskList } from './components/TaskList';
 import { MiniTimerBar } from './components/MiniTimerBar';
+import { EmptyState } from './components/EmptyState';
+import { DemoTaskBanner } from './components/DemoTaskBanner';
 import { TaskFormModal } from './components/TaskFormModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { CapacitySettingsModal } from './components/CapacitySettingsModal';
@@ -20,6 +22,7 @@ import { getRemainingEffortMap } from './utils/stopwatchIntegration';
 import { getCategoryCalibrations } from './utils/calibration';
 import { getSmartRecommendations } from './utils/ranking';
 import { getStatusSentence } from './utils/statusSentence';
+import { isSampleTaskSet, isSampleBannerDismissed, dismissSampleBanner } from './utils/sampleDetection';
 import { Task, Priority, TaskCategory } from './types';
 import { AlertTriangle } from 'lucide-react';
 
@@ -94,6 +97,23 @@ export function App() {
     () => getStatusSentence(tasks, capacitySettings, currentTime),
     [tasks, capacitySettings, currentTime]
   );
+
+  const [isDemoBannerDismissedState, setIsDemoBannerDismissedState] = useState(() => isSampleBannerDismissed());
+
+  const showDemoBanner = useMemo(() => {
+    return !isDemoBannerDismissedState && isSampleTaskSet(tasks);
+  }, [isDemoBannerDismissedState, tasks]);
+
+  const handleClearDemoTasks = () => {
+    clearAllTasks();
+    dismissSampleBanner();
+    setIsDemoBannerDismissedState(true);
+  };
+
+  const handleKeepDemoTasks = () => {
+    dismissSampleBanner();
+    setIsDemoBannerDismissedState(true);
+  };
 
   const handleOpenAddModal = () => {
     setEditingTask(null);
@@ -186,82 +206,101 @@ export function App() {
 
       {/* Main Container: Mobile-first 375px -> 768px */}
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
-        {/* 1. Status Sentence replacing the 4 stat cards */}
-        <section aria-label="Current status">
-          <StatusSentence
-            sentence={statusSentence}
-            onAction={handleStatusAction}
+        {/* Optional Demo Tasks Detection Banner */}
+        {showDemoBanner && (
+          <DemoTaskBanner
+            onClear={handleClearDemoTasks}
+            onKeep={handleKeepDemoTasks}
           />
-        </section>
-
-        {/* 2. Hero "Now" Card */}
-        <section id="now-card" aria-label="Recommended task">
-          <NowCard
-            recommendation={topRecommendation}
-            onToggleComplete={toggleComplete}
-            onNotToday={handleNotToday}
-            onEmailInstructor={(task) => setEmailTaskTarget(task)}
-            stopwatch={{
-              status: stopwatch.status,
-              displayElapsedMs: stopwatch.displayElapsedMs,
-              formattedTime: stopwatch.formattedTime,
-              start: () => {
-                if (topRecommendation?.task) {
-                  stopwatch.setSelectedTaskId(topRecommendation.task.id);
-                }
-                stopwatch.start();
-              },
-              pause: stopwatch.pause,
-              resume: stopwatch.resume,
-              stop: stopwatch.stop,
-              saveSession: stopwatch.saveSession,
-              resetToIdle: stopwatch.resetToIdle,
-              selectedTaskId: stopwatch.selectedTaskId,
-              setSelectedTaskId: stopwatch.setSelectedTaskId,
-              isSaved: stopwatch.isSaved,
-            }}
-          />
-        </section>
-
-        {/* 3. Next Up list */}
-        {nextUpQueue.length > 0 && (
-          <section aria-label="Next tasks">
-            <NextUpList
-              recommendations={nextUpQueue}
-              onStartTask={handleStartNow}
-              onToggleComplete={toggleComplete}
-            />
-          </section>
         )}
 
-        {/* 4. This Week Compact Forecast Strip with Consequence Simulator */}
-        <section aria-label="Weekly workload forecast">
-          <ForecastStrip
-            tasks={tasks}
-            capacitySettings={capacitySettings}
-            now={currentTime}
-            onUpdateTaskDueDate={(taskId, newDueDate) => {
-              updateTask(taskId, { dueDateTime: newDueDate });
-            }}
-          />
-        </section>
-
-        {/* 5. Collapsible All Tasks List */}
-        <section aria-label="All coursework">
-          <TaskList
-            tasks={tasks}
-            onToggleComplete={toggleComplete}
-            onEdit={handleOpenEditModal}
-            onDelete={(id) => setDeleteCandidateId(id)}
+        {tasks.length === 0 ? (
+          /* Clean Empty State when user has 0 tasks */
+          <EmptyState
             onOpenAddTask={handleOpenAddModal}
-            now={currentTime}
-            capacitySettings={capacitySettings}
-            remainingEffortMap={remainingEffortMap}
-            onEmailInstructor={(task) => setEmailTaskTarget(task)}
             onOpenImport={() => setIsImportModalOpen(true)}
-            isInitiallyExpanded={false}
+            onTakeTour={resetToSampleTasks}
           />
-        </section>
+        ) : (
+          <>
+            {/* 1. Status Sentence replacing the 4 stat cards */}
+            <section aria-label="Current status">
+              <StatusSentence
+                sentence={statusSentence}
+                onAction={handleStatusAction}
+              />
+            </section>
+
+            {/* 2. Hero "Now" Card */}
+            <section id="now-card" aria-label="Recommended task">
+              <NowCard
+                recommendation={topRecommendation}
+                onToggleComplete={toggleComplete}
+                onNotToday={handleNotToday}
+                onEmailInstructor={(task) => setEmailTaskTarget(task)}
+                stopwatch={{
+                  status: stopwatch.status,
+                  displayElapsedMs: stopwatch.displayElapsedMs,
+                  formattedTime: stopwatch.formattedTime,
+                  start: () => {
+                    if (topRecommendation?.task) {
+                      stopwatch.setSelectedTaskId(topRecommendation.task.id);
+                    }
+                    stopwatch.start();
+                  },
+                  pause: stopwatch.pause,
+                  resume: stopwatch.resume,
+                  stop: stopwatch.stop,
+                  saveSession: stopwatch.saveSession,
+                  resetToIdle: stopwatch.resetToIdle,
+                  selectedTaskId: stopwatch.selectedTaskId,
+                  setSelectedTaskId: stopwatch.setSelectedTaskId,
+                  isSaved: stopwatch.isSaved,
+                }}
+              />
+            </section>
+
+            {/* 3. Next Up list */}
+            {nextUpQueue.length > 0 && (
+              <section aria-label="Next tasks">
+                <NextUpList
+                  recommendations={nextUpQueue}
+                  onStartTask={handleStartNow}
+                  onToggleComplete={toggleComplete}
+                />
+              </section>
+            )}
+
+            {/* 4. This Week Compact Forecast Strip with Consequence Simulator */}
+            <section aria-label="Weekly workload forecast">
+              <ForecastStrip
+                tasks={tasks}
+                capacitySettings={capacitySettings}
+                now={currentTime}
+                onUpdateTaskDueDate={(taskId, newDueDate) => {
+                  updateTask(taskId, { dueDateTime: newDueDate });
+                }}
+              />
+            </section>
+
+            {/* 5. Collapsible All Tasks List */}
+            <section aria-label="All coursework">
+              <TaskList
+                tasks={tasks}
+                onToggleComplete={toggleComplete}
+                onEdit={handleOpenEditModal}
+                onDelete={(id) => setDeleteCandidateId(id)}
+                onOpenAddTask={handleOpenAddModal}
+                now={currentTime}
+                capacitySettings={capacitySettings}
+                remainingEffortMap={remainingEffortMap}
+                onEmailInstructor={(task) => setEmailTaskTarget(task)}
+                onOpenImport={() => setIsImportModalOpen(true)}
+                isInitiallyExpanded={false}
+              />
+            </section>
+          </>
+        )}
       </main>
 
       {/* Floating Mini-Timer Bar (Visible when timer is active or paused) */}

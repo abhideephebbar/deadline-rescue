@@ -49,7 +49,14 @@ npm test
    - Collapsible **"All tasks"** list tucked neatly below the fold to eliminate visual overwhelm.
    - Full support for `prefers-color-scheme: light` and `prefers-reduced-motion`.
 
-2. **Continuous Risk Prioritization Engine**:
+2. **Zero-Setup Clean Empty State & Explicit Demo Mode**:
+   - First launch starts completely clean with zero pre-seeded fake tasks.
+   - Welcomes students with an invitation (*"What's on your plate this week?"*), two clear primary actions (*"Paste your deadlines"* and *"Add a task"*), and a quiet link to take a tour.
+   - Hides recommendation cards, lists, and forecasts entirely when empty so the screen never feels prematurely cluttered.
+   - Reviewers and new students can load rich sample data on-demand in one tap via the **"..."** menu.
+   - Detects legacy pre-seeded demo tasks for existing users and presents a non-destructive banner (*"These look like the demo tasks. Clear them and start fresh? [Clear] [Keep]"*) without ever wiping user data without confirmation.
+
+3. **Continuous Risk Prioritization Engine**:
    - Continuous rule-based risk formulation: $\text{risk} = \frac{\text{remaining effort}}{\text{available hours}}$.
    - Guarantees that closer deadlines, higher priority, greater effort, or tighter buffers never lower score.
    - Tasks in time deficit mathematically never rank below non-deficit tasks of equal or lower priority.
