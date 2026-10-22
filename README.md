@@ -130,16 +130,20 @@ npm test
      - Highlighted ambiguity banners alert students to verify cutoff times.
      - Checkbox selection allows students to deselect false positives or irrelevant lines with one click.
 
-10. **Grounded Schedule Assistant ("Ask" Box)**:
-   - Plain-language triage assistant accessible via the **"Ask"** button in the header (modal on desktop, bottom sheet on mobile).
-   - Designed strictly for academic triage, not generic chat: answers questions grounded in the student's real deadlines, priorities, and study hours.
+10. **Conversational Grounded Schedule Assistant ("Ask" Assistant)**:
+   - Conversational schedule triage thread accessible via the **"Ask"** button in the header (accessible modal on desktop, smooth slide-up sheet on mobile).
+   - Designed strictly for academic triage: answers questions grounded in the student's real deadlines, priorities, and study hours with full multi-turn conversational history.
+   - **Conversational Memory & Pronoun Resolution**: Supports natural follow-up questions (e.g. asking *"Can I delay it by 1 day?"* or *"What if I skip it?"* automatically resolves pronouns like `"it"`, `"that one"`, or `"this task"` to the most recently discussed assignment).
+   - **Fuzzy Coursework & Course Code Matching**: Matches queries by course codes (`CS 350`, `cs350`, `ECON 201`) and partial title keywords with automatic candidate scoring.
+   - **Ambiguity Clarification**: If a task reference is ambiguous or matches multiple items (e.g. *"the lab"* when two labs exist), the assistant presents clickable option chips instead of silently guessing.
+   - **Fast Local Small-Talk & Grounded Greetings**: Intercepts greetings (`"hello"`, `"hey"`), thanks, and help queries instantly without network latency, welcoming students with real data about their top task and today's schedule.
    - **Supported Queries & Intents**:
      - *Explain Ranking*: *"Why is this my top task?"* — provides transparent mathematical rationale based on effort, deadline, and working buffer.
-     - *Adjust Capacity*: *"I only have 2 hours tonight"* — simulates impact on today's deficit and proposes an update.
+     - *Adjust Capacity*: *"I only have 2 hours tonight"* (or tomorrow/Friday/in 2 days) — simulates impact on today's deficit and proposes an update.
      - *Consequence Testing*: *"What if I skip my lab?"* or *"What if I move my essay by 2 days?"* — computes exact hours freed or runs the live forecast simulation.
      - *Natural Language Task Intake*: *"Add CS 350 lab due Friday"* — proposes parsed coursework with validated time and categories.
    - **Strict Grounding & Confirmation Cards**: The AI model never directly alters user data or hallucinates numbers. The client validates the classified intent, executes local deterministic algorithms to calculate figures, and displays interactive **Confirmation Cards** (*"Set today's focus hours to 2h? [Update study hours]"*, *"Add 'CS 350 Lab' [Add task]"*) requiring explicit student consent.
-   - **Offline Rule-Based Fallback**: Seamlessly switches to offline rule matching if the serverless function is unreachable or no API key is configured.
+   - **Offline Rule-Based Fallback**: Seamlessly switches to the offline rule matching engine with full capability if the serverless function is unreachable or no API key is configured.
    - **Privacy First**: Ephemeral in-memory session; conversations and schedule snapshots are never stored remotely.
 
 11. **Task Management & Form Validation**:
