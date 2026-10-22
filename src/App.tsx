@@ -7,6 +7,7 @@ import { TaskList } from './components/TaskList';
 import { TaskFormModal } from './components/TaskFormModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { CapacitySettingsModal } from './components/CapacitySettingsModal';
+import { TriageModal } from './components/TriageModal';
 import { Stopwatch } from './components/Stopwatch';
 import { SideNav } from './components/SideNav';
 import { AnimatedNoise } from './components/AnimatedNoise';
@@ -57,6 +58,7 @@ export function App() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCapacityModalOpen, setIsCapacityModalOpen] = useState(false);
+  const [isTriageModalOpen, setIsTriageModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
 
@@ -234,6 +236,7 @@ export function App() {
               now={currentTime}
               capacitySettings={capacitySettings}
               onOpenCapacitySettings={() => setIsCapacityModalOpen(true)}
+              onOpenTriageModal={() => setIsTriageModalOpen(true)}
             />
           </section>
 
@@ -322,6 +325,18 @@ export function App() {
           onResetDefaults={resetCapacityDefaults}
           tasks={tasks}
           now={currentTime}
+        />
+
+        {/* Tactical Emergency Triage Modal */}
+        <TriageModal
+          isOpen={isTriageModalOpen}
+          onClose={() => setIsTriageModalOpen(false)}
+          tasks={tasks}
+          capacitySettings={capacitySettings}
+          now={currentTime}
+          remainingEffortMap={remainingEffortMap}
+          onStartNow={handleStartNow}
+          onToggleComplete={toggleComplete}
         />
       </div>
     </SplitFlapAudioProvider>

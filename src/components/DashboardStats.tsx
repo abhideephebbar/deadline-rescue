@@ -8,6 +8,7 @@ interface DashboardStatsProps {
   now?: Date;
   capacitySettings?: CapacitySettings;
   onOpenCapacitySettings?: () => void;
+  onOpenTriageModal?: () => void;
 }
 
 export const DashboardStats: React.FC<DashboardStatsProps> = ({
@@ -15,6 +16,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
   now = new Date(),
   capacitySettings,
   onOpenCapacitySettings,
+  onOpenTriageModal,
 }) => {
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.completed).length;
@@ -87,15 +89,27 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
             </span>
           </div>
 
-          {onOpenCapacitySettings && (
-            <button
-              onClick={onOpenCapacitySettings}
-              type="button"
-              className="text-[11px] text-zinc-400 hover:text-orange-400 transition-colors uppercase tracking-wider shrink-0 cursor-pointer"
-            >
-              [Adjust Capacity &amp; Blocked Hours &rarr;]
-            </button>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {onOpenTriageModal && (todayLoad.status === 'overloaded' || deficitCount > 0) && (
+              <button
+                onClick={onOpenTriageModal}
+                type="button"
+                className="px-2.5 py-1 bg-red-500/20 hover:bg-red-500 hover:text-black border border-red-500/50 text-red-300 font-bold text-[11px] uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                🚨 Launch Triage Mode
+              </button>
+            )}
+
+            {onOpenCapacitySettings && (
+              <button
+                onClick={onOpenCapacitySettings}
+                type="button"
+                className="text-[11px] text-zinc-400 hover:text-orange-400 transition-colors uppercase tracking-wider cursor-pointer"
+              >
+                [Adjust Working Hours &rarr;]
+              </button>
+            )}
+          </div>
         </div>
       )}
 

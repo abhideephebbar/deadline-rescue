@@ -76,24 +76,33 @@ npm test
    - Generates category-specific 10-minute micro-steps (e.g. outlining key questions, verifying code compiles, skimming chapter headings).
    - Seamlessly associates and launches the stopwatch chrono linked directly to the task.
 
-7. **Task Management & Form Validation**:
+7. **Tactical Capacity-Driven Triage Mode**:
+   - One-click recovery protocol activated whenever demand outstrips available capacity or emergency deficits occur.
+   - Intelligently partitions coursework into three strategic buckets:
+     1. **Do Fully**: High-stakes deliverables (Exams, Projects, Urgent High-Priority items) requiring full focus and hours.
+     2. **Do the Minimum (MVP)**: Moderate-weight homework and lab work targeted for 75–80% partial credit with 50% effort reduction.
+     3. **Safe to Defer or Skip**: Low-priority readings and non-urgent items scheduled for 0h today to immediately free study hours without penalty.
+   - Displays transparent hours saved and net deficit reduction.
+   - **Explicit Non-Prediction Notice**: Communicates transparently that suggestions are computed strictly from student inputs (estimates, priorities, deadlines, and working hours), not algorithmic black-box grade predictions.
+
+8. **Task Management & Form Validation**:
    - Add and edit assignments with title, course code (e.g., `CS 350`), category (assignment, lab, exam, quiz, etc.), due date & time, estimated effort (hours), priority, and notes.
    - Real-time form validation with inline feedback.
    - Fast presets for college students (`Tonight 11:59 PM`, `Tomorrow 11:59 PM`, `In 2 Days`, `+0.5h`, `+1h`, `+2h`, etc.).
 
-4. **Task Cards with Urgency Indicators**:
+9. **Task Cards with Urgency Indicators**:
    - Dynamic urgency badges: `OVERDUE`, `TIME DEFICIT`, `CRITICAL (<12H)`, `DUE TODAY (<24H)`, `UPCOMING (<3 DAYS)`, `ON RADAR`.
    - Relative countdown time (`Due in 6h 30m`) and formatted calendar timestamps.
    - Safety buffer pill (`2.5h buffer` or `⚠️ 1.5h Deficit!`).
    - One-click completion with congratulatory confetti animation.
    - Edit and delete actions with confirmation dialog.
 
-5. **Sorting & Filtering**:
+10. **Sorting & Filtering**:
    - Search across task titles, course codes, and notes.
    - Filter by status (`All`, `Pending`, `Due Today`, `Overdue`, `Completed`) and Course code.
    - Sort by Smart Rescue Priority, Deadline (Soonest first), Priority level, or Effort.
 
-6. **Persistence & Sample Data**:
+11. **Persistence & Sample Data**:
    - Persisted seamlessly via `localStorage` across page refreshes.
    - Loaded with realistic college coursework upon first visit.
    - "Reset Samples" button for instant testing.
