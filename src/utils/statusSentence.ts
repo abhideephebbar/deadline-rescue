@@ -71,3 +71,4 @@ export function getStatusSentence(
     tone: 'good',
   };
 }
+

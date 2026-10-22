@@ -76,3 +76,4 @@ export const NextUpList: React.FC<NextUpListProps> = ({
     </div>
   );
 };
+

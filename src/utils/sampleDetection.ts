@@ -49,3 +49,4 @@ export function dismissSampleBanner(): void {
     // localStorage unavailable
   }
 }
+

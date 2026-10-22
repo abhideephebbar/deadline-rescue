@@ -242,3 +242,4 @@ export const CatchUpModal: React.FC<CatchUpModalProps> = ({
     </div>
   );
 };
+

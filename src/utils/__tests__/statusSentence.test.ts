@@ -91,3 +91,4 @@ describe('Status Sentence Generator', () => {
     expect(res.tone).toBe('good');
   });
 });
+

@@ -254,3 +254,4 @@ export const ProductTour: React.FC<ProductTourProps> = ({ isOpen, onClose }) => 
     </div>
   );
 };
+
