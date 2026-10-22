@@ -79,6 +79,17 @@ export function App() {
     setIsModalOpen(true);
   };
 
+  const handleStartNow = (task: Task) => {
+    stopwatch.setSelectedTaskId(task.id);
+    if (stopwatch.status === 'idle' || stopwatch.status === 'stopped') {
+      stopwatch.start();
+    }
+    const stopwatchSection = document.getElementById('section-stopwatch');
+    if (stopwatchSection) {
+      stopwatchSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const handleModalSubmit = (data: {
     title: string;
     course: string;
@@ -200,6 +211,7 @@ export function App() {
               now={currentTime}
               capacitySettings={capacitySettings}
               remainingEffortMap={remainingEffortMap}
+              onStartNow={handleStartNow}
             />
           </section>
 

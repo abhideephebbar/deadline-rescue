@@ -7,10 +7,13 @@ import {
   Hourglass, 
   Zap, 
   AlertOctagon,
-  Target
+  Target,
+  Play,
+  Sparkles
 } from 'lucide-react';
 import { Task, CapacitySettings } from '../types';
 import { getSmartRecommendations } from '../utils/ranking';
+import { getStarterStep } from '../utils/starterSteps';
 import { ScrambleTextOnHover } from './ScrambleText';
 import { BitmapChevron } from './BitmapChevron';
 
@@ -20,6 +23,7 @@ interface SmartRecommendationCardProps {
   now?: Date;
   capacitySettings?: CapacitySettings;
   remainingEffortMap?: Record<string, number>;
+  onStartNow?: (task: Task) => void;
 }
 
 export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = ({
@@ -28,6 +32,7 @@ export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = (
   now = new Date(),
   capacitySettings,
   remainingEffortMap,
+  onStartNow,
 }) => {
   const [showFullQueue, setShowFullQueue] = useState(false);
   const { topRecommendation, rankedQueue } = getSmartRecommendations(tasks, now, remainingEffortMap, capacitySettings);
@@ -55,6 +60,7 @@ export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = (
   }
 
   const { task, headline, explanation, keyFactors, urgency, actionAdvice, score } = topRecommendation;
+  const starterStep = getStarterStep(task.category, task.title, task.course);
 
   return (
     <div id="section-triage" className="relative border border-orange-500/40 bg-zinc-950 p-6 sm:p-8 transition-all shadow-[0_0_30px_rgba(249,115,22,0.07)]">
@@ -70,16 +76,30 @@ export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = (
           </span>
         </div>
 
-        {/* Mark Done Direct Action */}
-        <button
-          onClick={() => onToggleComplete(task.id)}
-          type="button"
-          className="group inline-flex items-center space-x-2 border border-emerald-500/80 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-black font-mono text-xs uppercase tracking-widest px-4 py-2 transition-all cursor-pointer"
-        >
-          <Check className="w-4 h-4 stroke-[2.5]" />
-          <ScrambleTextOnHover text="Resolve & Mark Done" as="span" duration={0.3} />
-          <BitmapChevron className="transition-transform duration-200 group-hover:rotate-45" />
-        </button>
+        {/* Action Buttons: Primary Start Now + Resolve */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {onStartNow && (
+            <button
+              onClick={() => onStartNow(task)}
+              type="button"
+              className="group inline-flex items-center space-x-2 border border-orange-500 bg-orange-500 text-black hover:bg-orange-400 font-mono text-xs uppercase tracking-widest px-4 py-2 font-bold transition-all shadow-[0_0_15px_rgba(249,115,22,0.35)] cursor-pointer"
+            >
+              <Play className="w-3.5 h-3.5 fill-current stroke-[2]" />
+              <ScrambleTextOnHover text="Start Now" as="span" duration={0.3} />
+              <BitmapChevron className="transition-transform duration-200 group-hover:rotate-45" />
+            </button>
+          )}
+
+          <button
+            onClick={() => onToggleComplete(task.id)}
+            type="button"
+            className="group inline-flex items-center space-x-2 border border-emerald-500/80 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-black font-mono text-xs uppercase tracking-widest px-4 py-2 transition-all cursor-pointer"
+          >
+            <Check className="w-4 h-4 stroke-[2.5]" />
+            <ScrambleTextOnHover text="Resolve & Mark Done" as="span" duration={0.3} />
+            <BitmapChevron className="transition-transform duration-200 group-hover:rotate-45" />
+          </button>
+        </div>
       </div>
 
       {/* Main Grid: Headline & Analysis */}
@@ -131,6 +151,35 @@ export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = (
             <div className="pt-2 border-t border-white/5 font-mono text-xs text-orange-300/90 flex items-center space-x-2">
               <span className="text-zinc-500">TACTIC:</span>
               <span>{actionAdvice}</span>
+            </div>
+          </div>
+
+          {/* Concrete 10-Minute Starter Step */}
+          <div className="border border-orange-500/40 bg-orange-950/20 p-4 space-y-2">
+            <div className="flex items-center justify-between text-orange-400 font-mono text-[10px] uppercase tracking-wider font-bold">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>FIRST 10 MINUTES // LOW-BARRIER KICKOFF</span>
+              </span>
+              <span className="px-1.5 py-0.2 border border-orange-500/30 text-[9px]">
+                CONCRETE STEP
+              </span>
+            </div>
+            <p className="font-mono text-xs sm:text-sm text-zinc-200 leading-relaxed">
+              {starterStep}
+            </p>
+            <div className="pt-1 flex flex-col sm:flex-row sm:items-center justify-between text-[11px] font-mono text-zinc-400 gap-2">
+              <span>Eliminate activation resistance: focus only on this single step.</span>
+              {onStartNow && (
+                <button
+                  onClick={() => onStartNow(task)}
+                  type="button"
+                  className="inline-flex items-center gap-1 text-orange-400 hover:text-orange-300 font-bold uppercase tracking-wider text-[11px] cursor-pointer"
+                >
+                  <Play className="w-3 h-3 fill-current" />
+                  <span>[Launch Stopwatch &rarr;]</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

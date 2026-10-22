@@ -71,7 +71,12 @@ npm test
    - Interactive deferral simulation recalculates weekly capacity live and explains the exact consequence in a single clear sentence.
    - Warns students immediately if postponing a task would push it past its deadline or cause late penalties.
 
-6. **Task Management & Form Validation**:
+6. **Start Now Low-Barrier Kickoff Flow**:
+   - Primary "Start Now" action on the top recommended assignment removes activation energy and decision paralysis.
+   - Generates category-specific 10-minute micro-steps (e.g. outlining key questions, verifying code compiles, skimming chapter headings).
+   - Seamlessly associates and launches the stopwatch chrono linked directly to the task.
+
+7. **Task Management & Form Validation**:
    - Add and edit assignments with title, course code (e.g., `CS 350`), category (assignment, lab, exam, quiz, etc.), due date & time, estimated effort (hours), priority, and notes.
    - Real-time form validation with inline feedback.
    - Fast presets for college students (`Tonight 11:59 PM`, `Tomorrow 11:59 PM`, `In 2 Days`, `+0.5h`, `+1h`, `+2h`, etc.).
