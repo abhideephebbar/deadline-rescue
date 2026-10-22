@@ -40,7 +40,13 @@ export function calculateRisk(remainingEffort: number, hoursRemaining: number): 
   if (hoursRemaining >= MIN_HORIZON_HOURS) {
     return effort / hoursRemaining;
   }
-  return 1 + (effort - hoursRemaining) / MIN_HORIZON_HOURS;
+  const rawRisk = 1 + (effort - hoursRemaining) / MIN_HORIZON_HOURS;
+  if (hoursRemaining <= 0) {
+    // For overdue <= 24h: cap risk so it never exceeds 1.5x of what it would have been at deadline (hoursRemaining = 0)
+    const riskAtDeadline = 1 + effort / MIN_HORIZON_HOURS;
+    return Math.min(rawRisk, 1.5 * riskAtDeadline);
+  }
+  return rawRisk;
 }
 
 /**
@@ -153,14 +159,41 @@ export function getSmartRecommendations(
 ): {
   topRecommendation: Recommendation | null;
   rankedQueue: Recommendation[];
+  catchUpQueue: Task[];
 } {
-  const incompleteTasks = tasks.filter((t) => !t.completed);
+  const incompleteTasks = tasks.filter((t) => !t.completed && !t.dropped);
 
   if (incompleteTasks.length === 0) {
-    return { topRecommendation: null, rankedQueue: [] };
+    return { topRecommendation: null, rankedQueue: [], catchUpQueue: [] };
   }
 
-  const recommendations: Recommendation[] = incompleteTasks.map((task) => {
+  const normalCandidates: Task[] = [];
+  const catchUpTasks: Task[] = [];
+
+  incompleteTasks.forEach((task) => {
+    const dueTime = new Date(task.dueDateTime).getTime();
+    const hoursRemaining = (dueTime - now.getTime()) / (1000 * 60 * 60);
+
+    // Overdue by more than 24 hours drops out of normal recommendations into catchUpQueue
+    if (hoursRemaining < -24) {
+      catchUpTasks.push(task);
+    } else {
+      normalCandidates.push(task);
+    }
+  });
+
+  // Sort catch-up tasks by due date (most recently overdue first)
+  catchUpTasks.sort((a, b) => new Date(b.dueDateTime).getTime() - new Date(a.dueDateTime).getTime());
+
+  if (normalCandidates.length === 0) {
+    return {
+      topRecommendation: null,
+      rankedQueue: [],
+      catchUpQueue: catchUpTasks,
+    };
+  }
+
+  const recommendations: Recommendation[] = normalCandidates.map((task) => {
     const remainingEffort = remainingEffortMap ? remainingEffortMap[task.id] : undefined;
     const analysis = calculateTaskScore(task, now, remainingEffort, capacitySettings);
     const effort = typeof remainingEffort === 'number' ? remainingEffort : task.estimatedHours;
@@ -199,5 +232,6 @@ export function getSmartRecommendations(
   return {
     topRecommendation: recommendations[0] || null,
     rankedQueue: recommendations,
+    catchUpQueue: catchUpTasks,
   };
 }

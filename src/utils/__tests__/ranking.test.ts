@@ -57,7 +57,7 @@ describe('Ranking and Scoring Engine', () => {
       expect(Math.abs(justBelow - atHorizon)).toBeLessThan(0.01);
     });
 
-    it('handles overdue tasks continuously without magic constants', () => {
+    it('handles overdue tasks continuously and caps overdue risk at 1.5x deadline risk', () => {
       const effort = 2;
       // Due right now (hoursRemaining = 0)
       const riskDueNow = calculateRisk(effort, 0);
@@ -67,12 +67,15 @@ describe('Ranking and Scoring Engine', () => {
       const riskOverdue1 = calculateRisk(effort, -1);
       expect(riskOverdue1).toBe(4.0);
 
-      // Overdue by 2 hours (hoursRemaining = -2)
+      // Overdue by 2 hours (hoursRemaining = -2) -> capped at 1.5 * 3.0 = 4.5
       const riskOverdue2 = calculateRisk(effort, -2);
-      expect(riskOverdue2).toBe(5.0);
+      expect(riskOverdue2).toBe(4.5);
 
-      // Linear progression: risk strictly increases as overdue hours increase
-      expect(riskOverdue2).toBeGreaterThan(riskOverdue1);
+      // Overdue by 10 hours -> still capped at 4.5
+      const riskOverdue10 = calculateRisk(effort, -10);
+      expect(riskOverdue10).toBe(4.5);
+
+      expect(riskOverdue2).toBeGreaterThanOrEqual(riskOverdue1);
       expect(riskOverdue1).toBeGreaterThan(riskDueNow);
     });
   });
@@ -281,6 +284,57 @@ describe('Ranking and Scoring Engine', () => {
 
       expect(result.topRecommendation).toBeNull();
       expect(result.rankedQueue).toEqual([]);
+      expect(result.catchUpQueue).toEqual([]);
+    });
+
+    it('keeps tasks overdue <= 24h in normal ranking queue', () => {
+      const taskOverdue20h = createSampleTask({
+        id: 'task-overdue-20h',
+        title: 'Recently Overdue Lab',
+        dueDateTime: new Date(baseTimestamp.getTime() - 20 * 3600 * 1000).toISOString(),
+      });
+      const result = getSmartRecommendations([taskOverdue20h], baseTimestamp);
+
+      expect(result.rankedQueue.length).toBe(1);
+      expect(result.topRecommendation?.task.id).toBe('task-overdue-20h');
+      expect(result.catchUpQueue.length).toBe(0);
+    });
+
+    it('moves tasks overdue > 24h into catchUpQueue and out of normal ranking', () => {
+      const taskOverdue25h = createSampleTask({
+        id: 'task-overdue-25h',
+        title: 'Old Missed Assignment',
+        dueDateTime: new Date(baseTimestamp.getTime() - 25 * 3600 * 1000).toISOString(),
+      });
+      const taskDueSoon = createSampleTask({
+        id: 'task-due-soon',
+        title: 'Project Due Tonight',
+        dueDateTime: new Date(baseTimestamp.getTime() + 2 * 3600 * 1000).toISOString(),
+        estimatedHours: 4,
+      });
+
+      const result = getSmartRecommendations([taskOverdue25h, taskDueSoon], baseTimestamp);
+
+      // The 25h overdue task must NOT displace the task due soon
+      expect(result.topRecommendation?.task.id).toBe('task-due-soon');
+      expect(result.rankedQueue.length).toBe(1);
+      expect(result.rankedQueue[0].task.id).toBe('task-due-soon');
+
+      // The 25h overdue task is safely in the catchUpQueue
+      expect(result.catchUpQueue.length).toBe(1);
+      expect(result.catchUpQueue[0].id).toBe('task-overdue-25h');
+    });
+
+    it('excludes dropped tasks from ranking and catchUpQueue', () => {
+      const droppedTask = createSampleTask({
+        id: 'task-dropped',
+        dropped: true,
+      });
+      const result = getSmartRecommendations([droppedTask], baseTimestamp);
+
+      expect(result.topRecommendation).toBeNull();
+      expect(result.rankedQueue).toEqual([]);
+      expect(result.catchUpQueue).toEqual([]);
     });
   });
 });

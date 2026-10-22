@@ -56,16 +56,18 @@ npm test
    - Reviewers and new students can load rich sample data on-demand in one tap via the **"..."** menu.
    - Detects legacy pre-seeded demo tasks for existing users and presents a non-destructive banner (*"These look like the demo tasks. Clear them and start fresh? [Clear] [Keep]"*) without ever wiping user data without confirmation.
 
-3. **Continuous Risk Prioritization Engine**:
+3. **Continuous Risk Prioritization Engine & Overdue Threshold**:
    - Continuous rule-based risk formulation: $\text{risk} = \frac{\text{remaining effort}}{\text{available hours}}$.
    - Guarantees that closer deadlines, higher priority, greater effort, or tighter buffers never lower score.
    - Tasks in time deficit mathematically never rank below non-deficit tasks of equal or lower priority.
-   - Smooth, non-punitive continuous overdue handling (no arbitrary tier jumps or magic score offsets).
+   - **Overdue Multiplier Cap**: Capped at 1.5x of the deadline risk so overdue tasks cannot permanently hijack focus from large projects due tonight.
+   - **24-Hour Overdue Threshold**: Tasks overdue by $\le 24$ hours remain in the normal ranking (allowing quick late turn-in for partial credit). After 24 hours, tasks gracefully drop out of "Now" and "Next up" and move to a dedicated **Catch-up list**.
+   - **Guilt-Free Catch-up Review**: A calm note under the Now card (*"N older items need attention"*) opens an actionable modal with 4 calm choices: *Mark done*, *Let it go* (dropped without shame), *Email instructor*, or *Reschedule*.
    - Live 30-second interval ticker refreshes countdowns, buffers, and urgency badges in real time.
    - Safe local storage schema versioning and seamless migration (`v1` to `v2`).
    - Clear explainable rationale in supportive, non-scolding language.
 
-3. **Student Capacity & Working Hours Buffer**:
+4. **Student Capacity & Working Hours Buffer**:
    - Replaces naive wall-clock time with an **available working hours buffer** that counts only actual focus study hours before each deadline.
    - Configurable daily focus hours per day of week (defaults to 4h/day weekdays, 5h/day weekends with zero setup required).
    - Blocked recovery & academic windows (sleep from 11 PM to 7 AM, classes from 9 AM to 3 PM) prevent unrealistic buffer assumptions.

@@ -15,6 +15,7 @@ import { TriageModal } from './components/TriageModal';
 import { ResetWeekModal } from './components/ResetWeekModal';
 import { InstructorEmailModal } from './components/InstructorEmailModal';
 import { ImportTasksModal } from './components/ImportTasksModal';
+import { CatchUpModal } from './components/CatchUpModal';
 import { useTasks } from './hooks/useTasks';
 import { useCapacity } from './hooks/useCapacity';
 import { useStopwatch } from './hooks/useStopwatch';
@@ -67,6 +68,7 @@ export function App() {
   const [isResetWeekModalOpen, setIsResetWeekModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const [isCatchUpModalOpen, setIsCatchUpModalOpen] = useState(false);
   const [emailTaskTarget, setEmailTaskTarget] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
@@ -81,7 +83,7 @@ export function App() {
   }, []);
 
   // Compute smart recommendations
-  const { topRecommendation, rankedQueue } = useMemo(
+  const { topRecommendation, rankedQueue, catchUpQueue } = useMemo(
     () => getSmartRecommendations(tasks, currentTime, remainingEffortMap, capacitySettings),
     [tasks, currentTime, remainingEffortMap, capacitySettings]
   );
@@ -238,6 +240,8 @@ export function App() {
                 onToggleComplete={toggleComplete}
                 onNotToday={handleNotToday}
                 onEmailInstructor={(task) => setEmailTaskTarget(task)}
+                catchUpCount={catchUpQueue.length}
+                onOpenCatchUp={() => setIsCatchUpModalOpen(true)}
                 stopwatch={{
                   status: stopwatch.status,
                   displayElapsedMs: stopwatch.displayElapsedMs,
@@ -426,6 +430,18 @@ export function App() {
           toggleComplete(taskId);
           setEmailTaskTarget(null);
         }}
+      />
+
+      {/* Dedicated Catch-Up Modal for tasks overdue by >24h */}
+      <CatchUpModal
+        isOpen={isCatchUpModalOpen}
+        onClose={() => setIsCatchUpModalOpen(false)}
+        catchUpTasks={catchUpQueue}
+        onMarkDone={toggleComplete}
+        onDropTask={(id) => updateTask(id, { completed: true, dropped: true })}
+        onEmailInstructor={(task) => setEmailTaskTarget(task)}
+        onReschedule={(task, newDateIso) => updateTask(task.id, { dueDateTime: newDateIso })}
+        now={currentTime}
       />
 
       {/* Paste-to-Import Modal */}
