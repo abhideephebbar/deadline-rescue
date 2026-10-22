@@ -9,6 +9,7 @@ interface HeaderProps {
   onResetSamples: () => void;
   onOpenCapacitySettings?: () => void;
   totalWeeklyCapacityHours?: number;
+  onOpenResetWeek?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,6 +17,7 @@ export const Header: React.FC<HeaderProps> = ({
   onResetSamples,
   onOpenCapacitySettings,
   totalWeeklyCapacityHours = 28,
+  onOpenResetWeek,
 }) => {
   const [currentTime, setCurrentTime] = useState<string>('');
 
@@ -81,6 +83,19 @@ export const Header: React.FC<HeaderProps> = ({
                 <Sliders className="w-3 h-3 text-orange-400" />
                 <span className="hidden sm:inline">Capacity</span>
                 <span className="text-orange-400 font-bold">[{totalWeeklyCapacityHours}h]</span>
+              </button>
+            )}
+
+            {/* Reset My Week Recovery Action */}
+            {onOpenResetWeek && (
+              <button
+                onClick={onOpenResetWeek}
+                type="button"
+                className="inline-flex items-center space-x-1.5 px-2.5 py-1 border border-amber-500/30 hover:border-amber-500 text-amber-300 hover:text-white font-mono text-[11px] uppercase tracking-wider transition-colors bg-amber-500/10 cursor-pointer"
+                title="Reset my week: reschedule or forgive overdue tasks for a clean slate"
+              >
+                <RotateCcw className="w-3 h-3 text-amber-400" />
+                <span className="hidden sm:inline">Reset Week</span>
               </button>
             )}
 

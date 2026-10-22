@@ -121,6 +121,10 @@ export function useTasks() {
     setTasks([]);
   }, []);
 
+  const replaceTasks = useCallback((newTasks: Task[]) => {
+    setTasks(newTasks);
+  }, []);
+
   return {
     tasks,
     addTask,
@@ -129,6 +133,7 @@ export function useTasks() {
     toggleComplete,
     resetToSampleTasks,
     clearAllTasks,
+    replaceTasks,
   };
 }
 

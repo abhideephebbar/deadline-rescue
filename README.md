@@ -85,24 +85,34 @@ npm test
    - Displays transparent hours saved and net deficit reduction.
    - **Explicit Non-Prediction Notice**: Communicates transparently that suggestions are computed strictly from student inputs (estimates, priorities, deadlines, and working hours), not algorithmic black-box grade predictions.
 
-8. **Task Management & Form Validation**:
+8. **Recovery, Not Shame & "Reset My Week"**:
+   - **Guilt-Free Copy Architecture**: All shaming language, streaks, alarms, and penalty warnings eliminated in favor of supportive, action-oriented guidance.
+   - **Overdue Recovery Actions**: Rather than displaying punitive alerts, overdue assignments offer concrete next steps:
+     - *Submit Partial Work*: Secure baseline partial credit and close open loops.
+     - *Email Instructor Outreach*: Built-in modal with pre-composed, polite student email templates (24–48h Extension Request, Partial Submission check-in, Office Hours request) featuring one-click clipboard copying and direct `mailto:` integration.
+   - **Reset My Week Clean-Slate Protocol**:
+     - Provides a one-click reset for students overwhelmed by backlogged deadlines.
+     - Offers 3 strategies: *Realistic Reschedule* (distributes overdue tasks forward into upcoming open capacity windows), *Submit Partial Work*, and *Clean Slate / Drop* (forgives backlog so student can focus 100% on upcoming deliverables).
+     - Full interactive preview displaying before-and-after schedule and capacity impact before confirmation.
+
+9. **Task Management & Form Validation**:
    - Add and edit assignments with title, course code (e.g., `CS 350`), category (assignment, lab, exam, quiz, etc.), due date & time, estimated effort (hours), priority, and notes.
    - Real-time form validation with inline feedback.
    - Fast presets for college students (`Tonight 11:59 PM`, `Tomorrow 11:59 PM`, `In 2 Days`, `+0.5h`, `+1h`, `+2h`, etc.).
 
-9. **Task Cards with Urgency Indicators**:
+10. **Task Cards with Urgency Indicators**:
    - Dynamic urgency badges: `OVERDUE`, `TIME DEFICIT`, `CRITICAL (<12H)`, `DUE TODAY (<24H)`, `UPCOMING (<3 DAYS)`, `ON RADAR`.
    - Relative countdown time (`Due in 6h 30m`) and formatted calendar timestamps.
    - Safety buffer pill (`2.5h buffer` or `⚠️ 1.5h Deficit!`).
    - One-click completion with congratulatory confetti animation.
    - Edit and delete actions with confirmation dialog.
 
-10. **Sorting & Filtering**:
+11. **Sorting & Filtering**:
    - Search across task titles, course codes, and notes.
    - Filter by status (`All`, `Pending`, `Due Today`, `Overdue`, `Completed`) and Course code.
    - Sort by Smart Rescue Priority, Deadline (Soonest first), Priority level, or Effort.
 
-11. **Persistence & Sample Data**:
+12. **Persistence & Sample Data**:
    - Persisted seamlessly via `localStorage` across page refreshes.
    - Loaded with realistic college coursework upon first visit.
    - "Reset Samples" button for instant testing.

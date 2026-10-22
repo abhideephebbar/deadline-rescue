@@ -6,7 +6,8 @@ import {
   Trash2, 
   Edit3, 
   AlertTriangle,
-  Zap
+  Zap,
+  Mail
 } from 'lucide-react';
 import { Task, CapacitySettings } from '../types';
 import { getUrgencyInfo } from '../utils/date';
@@ -20,6 +21,7 @@ interface TaskCardProps {
   now?: Date;
   capacitySettings?: CapacitySettings;
   remainingEffort?: number;
+  onEmailInstructor?: (task: Task) => void;
 }
 
 export const TaskCard: React.FC<TaskCardProps> = ({
@@ -31,6 +33,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   now = new Date(),
   capacitySettings,
   remainingEffort,
+  onEmailInstructor,
 }) => {
   const effort = typeof remainingEffort === 'number' ? remainingEffort : task.estimatedHours;
   const urgency = getUrgencyInfo(task.dueDateTime, effort, now, capacitySettings);
@@ -161,6 +164,36 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Overdue Recovery Prompt */}
+      {urgency.isOverdue && !task.completed && (
+        <div className="relative z-10 my-2.5 p-2.5 border border-amber-500/30 bg-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
+          <div className="flex items-center space-x-1.5 text-amber-300">
+            <span className="font-bold text-[10px] uppercase tracking-wider">Recovery Step:</span>
+            <span className="text-[11px] text-zinc-300">Submit partial work or request an extension.</span>
+          </div>
+          <div className="flex items-center space-x-2 shrink-0">
+            {onEmailInstructor && (
+              <button
+                type="button"
+                onClick={() => onEmailInstructor(task)}
+                className="px-2 py-1 bg-amber-500/20 hover:bg-amber-500 hover:text-black border border-amber-500/40 text-amber-300 text-[10px] uppercase font-bold transition-colors cursor-pointer flex items-center space-x-1"
+              >
+                <Mail className="w-3 h-3" />
+                <span>Email Instructor</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onToggleComplete(task.id)}
+              className="px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500 hover:text-black border border-emerald-500/40 text-emerald-300 text-[10px] uppercase font-bold transition-colors cursor-pointer flex items-center space-x-1"
+            >
+              <Check className="w-3 h-3" />
+              <span>Submit Partial</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Footer Metrics Row */}
       <div className="relative z-10 mt-3 pt-3 border-t border-white/5 flex flex-wrap items-center justify-between gap-y-2 gap-x-4 font-mono text-xs">

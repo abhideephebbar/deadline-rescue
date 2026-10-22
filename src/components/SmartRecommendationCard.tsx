@@ -9,7 +9,8 @@ import {
   AlertOctagon,
   Target,
   Play,
-  Sparkles
+  Sparkles,
+  Mail
 } from 'lucide-react';
 import { Task, CapacitySettings } from '../types';
 import { getSmartRecommendations } from '../utils/ranking';
@@ -24,6 +25,7 @@ interface SmartRecommendationCardProps {
   capacitySettings?: CapacitySettings;
   remainingEffortMap?: Record<string, number>;
   onStartNow?: (task: Task) => void;
+  onEmailInstructor?: (task: Task) => void;
 }
 
 export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = ({
@@ -33,6 +35,7 @@ export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = (
   capacitySettings,
   remainingEffortMap,
   onStartNow,
+  onEmailInstructor,
 }) => {
   const [showFullQueue, setShowFullQueue] = useState(false);
   const { topRecommendation, rankedQueue } = getSmartRecommendations(tasks, now, remainingEffortMap, capacitySettings);
@@ -153,6 +156,44 @@ export const SmartRecommendationCard: React.FC<SmartRecommendationCardProps> = (
               <span>{actionAdvice}</span>
             </div>
           </div>
+
+          {/* Overdue Recovery Guidance */}
+          {urgency.isOverdue && (
+            <div className="border border-amber-500/40 bg-amber-950/20 p-4 space-y-2">
+              <div className="flex items-center justify-between text-amber-400 font-mono text-[10px] uppercase tracking-wider font-bold">
+                <span className="flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>RECOMMENDED RECOVERY ACTION</span>
+                </span>
+                <span className="px-1.5 py-0.2 border border-amber-500/30 text-[9px]">
+                  SUPPORTIVE STEP
+                </span>
+              </div>
+              <p className="font-mono text-xs sm:text-sm text-zinc-200 leading-relaxed">
+                This deadline has passed, but closing open loops clears cognitive fatigue. Submit what you have completed so far for partial credit, or send a brief note to your instructor to ask for a reset.
+              </p>
+              <div className="pt-2 flex flex-wrap items-center gap-2">
+                {onEmailInstructor && (
+                  <button
+                    type="button"
+                    onClick={() => onEmailInstructor(task)}
+                    className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500 hover:text-black border border-amber-500/40 text-amber-300 font-mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center space-x-1.5"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>Email Instructor Draft</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onToggleComplete(task.id)}
+                  className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500 hover:text-black border border-emerald-500/40 text-emerald-300 font-mono text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center space-x-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Submit What You Have</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Concrete 10-Minute Starter Step */}
           <div className="border border-orange-500/40 bg-orange-950/20 p-4 space-y-2">

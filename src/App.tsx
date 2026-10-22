@@ -8,6 +8,8 @@ import { TaskFormModal } from './components/TaskFormModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { CapacitySettingsModal } from './components/CapacitySettingsModal';
 import { TriageModal } from './components/TriageModal';
+import { ResetWeekModal } from './components/ResetWeekModal';
+import { InstructorEmailModal } from './components/InstructorEmailModal';
 import { Stopwatch } from './components/Stopwatch';
 import { SideNav } from './components/SideNav';
 import { AnimatedNoise } from './components/AnimatedNoise';
@@ -31,6 +33,7 @@ export function App() {
     toggleComplete,
     resetToSampleTasks,
     clearAllTasks,
+    replaceTasks,
   } = useTasks();
 
   const {
@@ -59,6 +62,8 @@ export function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCapacityModalOpen, setIsCapacityModalOpen] = useState(false);
   const [isTriageModalOpen, setIsTriageModalOpen] = useState(false);
+  const [isResetWeekModalOpen, setIsResetWeekModalOpen] = useState(false);
+  const [emailTaskTarget, setEmailTaskTarget] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
 
@@ -125,6 +130,7 @@ export function App() {
           onResetSamples={resetToSampleTasks}
           onOpenCapacitySettings={() => setIsCapacityModalOpen(true)}
           totalWeeklyCapacityHours={totalWeeklyCapacityHours}
+          onOpenResetWeek={() => setIsResetWeekModalOpen(true)}
         />
 
         {/* Main Content Area (offset by side rail on desktop) */}
@@ -214,6 +220,7 @@ export function App() {
               capacitySettings={capacitySettings}
               remainingEffortMap={remainingEffortMap}
               onStartNow={handleStartNow}
+              onEmailInstructor={(task) => setEmailTaskTarget(task)}
             />
           </section>
 
@@ -237,6 +244,7 @@ export function App() {
               capacitySettings={capacitySettings}
               onOpenCapacitySettings={() => setIsCapacityModalOpen(true)}
               onOpenTriageModal={() => setIsTriageModalOpen(true)}
+              onOpenResetWeek={() => setIsResetWeekModalOpen(true)}
             />
           </section>
 
@@ -255,6 +263,7 @@ export function App() {
               now={currentTime}
               capacitySettings={capacitySettings}
               remainingEffortMap={remainingEffortMap}
+              onEmailInstructor={(task) => setEmailTaskTarget(task)}
             />
           </section>
 
@@ -337,6 +346,27 @@ export function App() {
           remainingEffortMap={remainingEffortMap}
           onStartNow={handleStartNow}
           onToggleComplete={toggleComplete}
+        />
+
+        {/* Reset My Week Recovery Modal */}
+        <ResetWeekModal
+          isOpen={isResetWeekModalOpen}
+          onClose={() => setIsResetWeekModalOpen(false)}
+          tasks={tasks}
+          capacitySettings={capacitySettings}
+          now={currentTime}
+          onConfirmReset={(updatedTasks) => replaceTasks(updatedTasks)}
+        />
+
+        {/* Instructor Outreach Recovery Modal */}
+        <InstructorEmailModal
+          isOpen={!!emailTaskTarget}
+          onClose={() => setEmailTaskTarget(null)}
+          task={emailTaskTarget}
+          onMarkSubmitted={(taskId) => {
+            toggleComplete(taskId);
+            setEmailTaskTarget(null);
+          }}
         />
       </div>
     </SplitFlapAudioProvider>

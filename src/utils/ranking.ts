@@ -88,18 +88,18 @@ export function calculateTaskScore(
 
   // 1. Overdue Handling
   if (urgency.isOverdue) {
-    headline = 'Past Due — Immediate Remediation';
+    headline = 'Past Due — Recovery Recommended';
     factors.unshift(`Overdue by ${formatRelativeTime(hoursRemaining).replace('Overdue by ', '')}`);
-    explanation = `This task passed its deadline ${formatRelativeTime(hoursRemaining)}. Submit as soon as possible to halt further grade deductions or penalties.`;
-    actionAdvice = `Close this open loop immediately before addressing upcoming commitments.`;
+    explanation = `This deadline passed ${formatRelativeTime(hoursRemaining)}. Recovery step: submit what you have completed or email your instructor to request a brief extension and reset expectations.`;
+    actionAdvice = `Submit partial work or email your instructor to close this open loop and relieve pressure.`;
   }
   // 2. Time Deficit Check (effort > hours remaining before deadline)
   else if (urgency.hasTimeDeficit) {
     const deficitHours = Math.abs(buffer).toFixed(1);
-    headline = 'Time Deficit — Start Immediately';
+    headline = 'Time Deficit — Focus Recommended';
     factors.unshift(`Time deficit: ${deficitHours}h shortfall (${effort}h needed vs ${hoursRemaining.toFixed(1)}h left)`);
-    explanation = `You need ~${effort} hours of work, but only ${hoursRemaining.toFixed(1)} hours remain before the deadline. Delaying will guarantee late submission.`;
-    actionAdvice = `Clear other distractions and begin work now to maximize what you can submit.`;
+    explanation = `You have ~${effort} hours of work with ${hoursRemaining.toFixed(1)} hours before the deadline. Getting started now helps you finish or capture maximum partial credit without extra pressure.`;
+    actionAdvice = `Clear other distractions and begin work now to capture maximum credit.`;
   }
   // 3. Imminent / Low Buffer
   else if (hoursRemaining <= 12 || buffer <= 3) {

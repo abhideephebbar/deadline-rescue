@@ -20,6 +20,7 @@ interface TaskListProps {
   now?: Date;
   capacitySettings?: CapacitySettings;
   remainingEffortMap?: Record<string, number>;
+  onEmailInstructor?: (task: Task) => void;
 }
 
 export const TaskList: React.FC<TaskListProps> = ({
@@ -32,6 +33,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   now = new Date(),
   capacitySettings,
   remainingEffortMap,
+  onEmailInstructor,
 }) => {
   const [filter, setFilter] = useState<TaskFilter>('all');
   const [selectedCourse, setSelectedCourse] = useState<string>('all');
@@ -240,6 +242,7 @@ export const TaskList: React.FC<TaskListProps> = ({
               now={now}
               capacitySettings={capacitySettings}
               remainingEffort={remainingEffortMap ? remainingEffortMap[task.id] : undefined}
+              onEmailInstructor={onEmailInstructor}
             />
           ))}
         </div>

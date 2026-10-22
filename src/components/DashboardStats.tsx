@@ -9,6 +9,7 @@ interface DashboardStatsProps {
   capacitySettings?: CapacitySettings;
   onOpenCapacitySettings?: () => void;
   onOpenTriageModal?: () => void;
+  onOpenResetWeek?: () => void;
 }
 
 export const DashboardStats: React.FC<DashboardStatsProps> = ({
@@ -17,6 +18,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
   capacitySettings,
   onOpenCapacitySettings,
   onOpenTriageModal,
+  onOpenResetWeek,
 }) => {
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.completed).length;
@@ -183,41 +185,53 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
           </div>
         </div>
 
-        {/* Metric 04: Rescue Alerts & Danger Zone */}
+        {/* Metric 04: Rescue Alerts & Recovery Radar */}
         <div className={`group relative border p-4 sm:p-5 transition-all ${
           overdueCount > 0 || deficitCount > 0
-            ? 'border-red-500/50 bg-red-950/20'
+            ? 'border-orange-500/50 bg-orange-950/20'
             : 'border-white/10 hover:border-white/20 bg-zinc-950/70'
         }`}>
           <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-widest text-zinc-400">
-            <span>[ 04 ] DANGER ZONE</span>
-            <span className={overdueCount > 0 || deficitCount > 0 ? 'text-red-400 font-bold' : 'text-zinc-400'}>
-              {overdueCount > 0 ? 'OVERDUE CRITICAL' : deficitCount > 0 ? 'DEFICIT CRITICAL' : 'NOMINAL'}
+            <span>[ 04 ] RECOVERY RADAR</span>
+            <span className={overdueCount > 0 || deficitCount > 0 ? 'text-orange-400 font-bold' : 'text-zinc-400'}>
+              {overdueCount > 0 ? 'ATTENTION NEEDED' : deficitCount > 0 ? 'SCHEDULE TIGHT' : 'NOMINAL'}
             </span>
           </div>
 
           <div className="mt-3 flex items-baseline justify-between">
             <span className={`font-display text-4xl sm:text-5xl tracking-tight ${
-              overdueCount > 0 || deficitCount > 0 ? 'text-red-400' : 'text-zinc-200'
+              overdueCount > 0 || deficitCount > 0 ? 'text-orange-400' : 'text-zinc-200'
             }`}>
               {overdueCount + deficitCount < 10 ? `0${overdueCount + deficitCount}` : overdueCount + deficitCount}
             </span>
-            <span className="font-mono text-xs text-zinc-400">HAZARDS</span>
+            <span className="font-mono text-xs text-zinc-400">RECOVERY ITEMS</span>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-white/5 flex flex-wrap gap-1 font-mono text-[10px]">
-            {overdueCount > 0 && (
-              <span className="text-red-400 border border-red-500/30 px-1.5 py-0.5 bg-red-500/10">
-                {overdueCount} OVERDUE
-              </span>
-            )}
-            {deficitCount > 0 && (
-              <span className="text-orange-400 border border-orange-500/30 px-1.5 py-0.5 bg-orange-500/10">
-                {deficitCount} TIME DEFICIT
-              </span>
-            )}
-            {overdueCount === 0 && deficitCount === 0 && (
-              <span className="text-emerald-400">✓ BUFFER INTEGRITY SECURE</span>
+          <div className="mt-3 pt-3 border-t border-white/5 flex flex-wrap items-center justify-between gap-1 font-mono text-[10px]">
+            <div className="flex flex-wrap gap-1">
+              {overdueCount > 0 && (
+                <span className="text-amber-400 border border-amber-500/30 px-1.5 py-0.5 bg-amber-500/10">
+                  {overdueCount} PAST DEADLINE
+                </span>
+              )}
+              {deficitCount > 0 && (
+                <span className="text-orange-400 border border-orange-500/30 px-1.5 py-0.5 bg-orange-500/10">
+                  {deficitCount} TIME DEFICIT
+                </span>
+              )}
+              {overdueCount === 0 && deficitCount === 0 && (
+                <span className="text-emerald-400">✓ SCHEDULE BALANCED</span>
+              )}
+            </div>
+
+            {overdueCount > 0 && onOpenResetWeek && (
+              <button
+                onClick={onOpenResetWeek}
+                type="button"
+                className="text-[10px] text-orange-400 hover:text-white underline underline-offset-2 uppercase tracking-wider font-bold cursor-pointer"
+              >
+                Reset My Week &rarr;
+              </button>
             )}
           </div>
         </div>

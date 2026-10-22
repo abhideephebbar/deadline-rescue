@@ -101,7 +101,7 @@ export function generateTriagePlan(
         category: 'safe_to_defer',
         oneLineReason:
           task.priority === 'low'
-            ? 'Low grade weight: safe to pause or submit late with minor penalty to preserve today\'s sanity.'
+            ? 'Low immediate impact: safe to pause and defer to upcoming capacity to preserve today\'s focus.'
             : `Due in ${urgency.relativeTime}: postponing work on this frees ${effort}h to rescue imminent deadlines.`,
         recommendedHours: 0,
         originalEffort: effort,
