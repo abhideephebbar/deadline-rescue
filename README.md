@@ -38,11 +38,16 @@ npm test
 
 ## ✨ Features
 
-1. **Executive Dashboard**:
-   - Total active vs completed tasks.
-   - Completion rate progress bar.
-   - Imminent deadlines (<24h and <48h counters).
-   - Emergency Rescue Alerts (overdue count and estimated time deficit warnings).
+1. **Calm, Mobile-First Triage Interface**:
+   - Designed mobile-first at 375px and scaled cleanly across tablet and desktop.
+   - Answers *"What should I do right now?"* in under 3 seconds with a dedicated **"Now" card**.
+   - Includes one plain-language explanation of why the task is prioritized, a 10-minute starter micro-step, an inline focus timer with pause/stop/save controls, and a guilt-free **"Not today"** deferral action.
+   - Slim header with quick action to add tasks, access study capacity, import deadlines, reset your week, and clean up.
+   - Supportive **Status Sentence** replacing cluttered stat cards with actionable, plain guidance (e.g. *"You're about 2 hours short today. [See what to drop]"*).
+   - Compact **"Next up"** rows for the following 2–3 assignments.
+   - Compact **"This week"** 7-day forecast strip with inline expandability and the *"What if I move this?"* consequence simulator.
+   - Collapsible **"All tasks"** list tucked neatly below the fold to eliminate visual overwhelm.
+   - Full support for `prefers-color-scheme: light` and `prefers-reduced-motion`.
 
 2. **Continuous Risk Prioritization Engine**:
    - Continuous rule-based risk formulation: $\text{risk} = \frac{\text{remaining effort}}{\text{available hours}}$.

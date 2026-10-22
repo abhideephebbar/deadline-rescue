@@ -1,15 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Search, 
-  SlidersHorizontal, 
+  ChevronDown, 
   RotateCcw,
-  FileText
+  Plus
 } from 'lucide-react';
 import { Task, TaskFilter, TaskSort, CapacitySettings } from '../types';
 import { TaskCard } from './TaskCard';
 import { getUrgencyInfo } from '../utils/date';
 import { calculateTaskScore } from '../utils/ranking';
-import { BitmapChevron } from './BitmapChevron';
 
 interface TaskListProps {
   tasks: Task[];
@@ -17,12 +16,13 @@ interface TaskListProps {
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onOpenAddTask: () => void;
-  onResetSamples: () => void;
   now?: Date;
   capacitySettings?: CapacitySettings;
   remainingEffortMap?: Record<string, number>;
   onEmailInstructor?: (task: Task) => void;
   onOpenImport?: () => void;
+  isInitiallyExpanded?: boolean;
+  catchUpTasks?: Task[];
 }
 
 export const TaskList: React.FC<TaskListProps> = ({
@@ -31,13 +31,14 @@ export const TaskList: React.FC<TaskListProps> = ({
   onEdit,
   onDelete,
   onOpenAddTask,
-  onResetSamples,
   now = new Date(),
   capacitySettings,
   remainingEffortMap,
   onEmailInstructor,
-  onOpenImport,
+  isInitiallyExpanded = false,
+  catchUpTasks = [],
 }) => {
+  const [isExpanded, setIsExpanded] = useState(isInitiallyExpanded);
   const [filter, setFilter] = useState<TaskFilter>('all');
   const [selectedCourse, setSelectedCourse] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -118,214 +119,187 @@ export const TaskList: React.FC<TaskListProps> = ({
     });
   }, [tasks, filter, selectedCourse, searchQuery, sortBy, now, capacitySettings, remainingEffortMap]);
 
-  const activeCount = tasks.filter((t) => !t.completed).length;
-  const completedCount = tasks.filter((t) => t.completed).length;
-
   return (
-    <div id="section-radar" className="space-y-4">
-      {/* Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between border-b border-white/10 pb-3 gap-2">
-        <div>
-          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-orange-400 block">
-            04 // RADAR QUEUE
-          </span>
-          <h2 className="font-display text-3xl sm:text-4xl text-white tracking-tight uppercase">
-            ACTIVE COURSEWORK DEADLINES
-          </h2>
-        </div>
-        <p className="font-mono text-xs text-zinc-500 text-left sm:text-right">
-          TRIAGED VIA TIME PROXIMITY & ESTIMATED EFFORT
-        </p>
+    <div id="section-all-tasks" className="space-y-4 font-sans">
+      {/* Collapsible Control Button */}
+      <div className="flex items-center justify-between border-t border-white/10 pt-4">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          aria-expanded={isExpanded}
+          className="inline-flex items-center space-x-2 text-sm font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 rounded py-1 px-1.5 -ml-1.5"
+        >
+          <span>{isExpanded ? 'Hide all tasks' : `Show all tasks (${tasks.length})`}</span>
+          <ChevronDown
+            className={`w-4 h-4 text-zinc-400 transition-transform duration-200 ${
+              isExpanded ? 'rotate-180' : ''
+            }`}
+          />
+        </button>
+
+        {isExpanded && (
+          <button
+            type="button"
+            onClick={onOpenAddTask}
+            className="text-xs text-orange-400 hover:text-orange-300 flex items-center space-x-1 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add task</span>
+          </button>
+        )}
       </div>
 
-      {/* Control Bar */}
-      <div className="border border-white/10 bg-zinc-950 p-3 sm:p-4 space-y-3 font-mono">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Search Field */}
-          <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-            <input
-              type="text"
-              placeholder="SEARCH RADAR BY TITLE, COURSE OR NOTE..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-14 py-2 bg-black border border-white/10 text-white text-xs placeholder-zinc-600 focus:outline-none focus:border-orange-500 uppercase tracking-wider"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-400 hover:text-white"
-              >
-                [CLR]
-              </button>
-            )}
-          </div>
-
-          {/* Sort Menu */}
-          <div className="flex items-center space-x-2 shrink-0">
-            <span className="text-[10px] text-zinc-500 flex items-center space-x-1 hidden sm:flex">
-              <SlidersHorizontal className="w-3 h-3" />
-              <span>SORT:</span>
-            </span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as TaskSort)}
-              className="px-2.5 py-1.5 bg-black border border-white/10 text-xs text-zinc-200 focus:border-orange-500 focus:outline-none uppercase tracking-wider"
-            >
-              <option value="smart">🎯 SMART TRIAGE RANK</option>
-              <option value="deadline">⏱ DEADLINE (SOONEST)</option>
-              <option value="priority">🔥 PRIORITY (URGENT)</option>
-              <option value="effort-asc">⚡ EFFORT (QUICK WIN)</option>
-              <option value="effort-desc">📚 EFFORT (HEAVY LIFT)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Filter Pills */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5 text-xs">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {[
-              { id: 'all', label: `ALL [${tasks.length}]` },
-              { id: 'active', label: `PENDING [${activeCount}]` },
-              { id: 'due-today', label: `DUE TODAY (<24H)` },
-              { id: 'overdue', label: `OVERDUE` },
-              { id: 'completed', label: `RESOLVED [${completedCount}]` },
-            ].map(({ id, label }) => {
-              const isSelected = filter === id;
-              return (
-                <button
-                  key={id}
-                  onClick={() => setFilter(id as TaskFilter)}
-                  type="button"
-                  className={`px-2.5 py-1 text-[11px] uppercase tracking-wider transition-all border ${
-                    isSelected
-                      ? 'border-orange-500 bg-orange-500/10 text-orange-400 font-bold'
-                      : 'border-white/10 hover:border-white/20 text-zinc-400 hover:text-white bg-black/40'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Course filter */}
-          {uniqueCourses.length > 0 && (
-            <div className="flex items-center space-x-1.5 text-[11px]">
-              <span className="text-zinc-600">COURSE:</span>
-              <select
-                value={selectedCourse}
-                onChange={(e) => setSelectedCourse(e.target.value)}
-                className="px-2 py-1 bg-black border border-white/10 text-zinc-300 focus:outline-none uppercase"
-              >
-                <option value="all">ALL COURSES</option>
-                {uniqueCourses.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Task Cards Stack */}
-      {filteredTasks.length > 0 ? (
-        <div className="space-y-3">
-          {filteredTasks.map((task, idx) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              index={idx}
-              onToggleComplete={onToggleComplete}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              now={now}
-              capacitySettings={capacitySettings}
-              remainingEffort={remainingEffortMap ? remainingEffortMap[task.id] : undefined}
-              onEmailInstructor={onEmailInstructor}
-            />
-          ))}
-        </div>
-      ) : (
-        /* Empty State */
-        <div className="p-8 sm:p-12 text-center border border-white/10 bg-zinc-950/60 font-mono">
-          {tasks.length === 0 ? (
-            <div className="max-w-md mx-auto space-y-3">
-              <span className="text-xs uppercase tracking-[0.25em] text-orange-400 block">
-                SIGNAL // EMPTY
+      {/* Expanded Content */}
+      {isExpanded && (
+        <div className="space-y-4 animate-fade-in">
+          {/* Catch-Up Older Items Banner (if any) */}
+          {catchUpTasks.length > 0 && (
+            <div className="p-3.5 rounded-lg border border-amber-500/30 bg-amber-950/20 space-y-2 text-xs">
+              <span className="font-semibold text-amber-300 block">
+                Catch up ({catchUpTasks.length} older items need resolution)
               </span>
-              <h3 className="font-display text-3xl sm:text-4xl text-white uppercase tracking-tight">
-                No Tracked Coursework
-              </h3>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Your priority radar is currently clear. Add a new deadline or load demo coursework to test the triage engine.
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
-                <button
-                  onClick={onOpenAddTask}
-                  type="button"
-                  className="inline-flex items-center gap-2 border border-orange-500 bg-orange-500 text-black px-4 py-2 text-xs uppercase tracking-widest font-bold hover:bg-orange-400 transition-colors cursor-pointer"
-                >
-                  <span>Add First Task</span>
-                  <BitmapChevron />
-                </button>
-                {onOpenImport && (
-                  <button
-                    onClick={onOpenImport}
-                    type="button"
-                    className="border border-white/20 px-4 py-2 text-xs uppercase tracking-widest text-zinc-200 hover:text-white hover:border-orange-500/50 transition-colors flex items-center space-x-1.5 cursor-pointer bg-black/40"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-orange-400" />
-                    <span>Paste Syllabus</span>
-                  </button>
-                )}
-                <button
-                  onClick={onResetSamples}
-                  type="button"
-                  className="border border-white/10 px-4 py-2 text-xs uppercase tracking-widest text-zinc-300 hover:text-white hover:border-white/30 transition-colors cursor-pointer"
-                >
-                  Load Sample Data
-                </button>
+              <div className="space-y-1.5">
+                {catchUpTasks.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between text-zinc-300">
+                    <span className="truncate">{t.title}</span>
+                    <button
+                      type="button"
+                      onClick={() => onToggleComplete(t.id)}
+                      className="text-xs text-orange-400 hover:text-white underline cursor-pointer shrink-0 ml-2"
+                    >
+                      Resolve
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
-          ) : filter === 'active' && activeCount === 0 ? (
-            <div className="max-w-md mx-auto space-y-2">
-              <span className="text-xs uppercase tracking-[0.25em] text-emerald-400 block">
-                STATUS // NOMINAL
-              </span>
-              <h3 className="font-display text-3xl sm:text-4xl text-white uppercase tracking-tight">
-                All Deadlines Conquered
-              </h3>
-              <p className="text-xs text-zinc-400">
-                Outstanding execution. Every assignment on your radar has been resolved.
-              </p>
+          )}
+
+          {/* Search and Filters Bar */}
+          <div className="rounded-lg border border-white/10 bg-zinc-950/60 p-3 space-y-3">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <input
+                type="text"
+                placeholder="Search tasks by title, course, or notes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-14 py-2 bg-black border border-white/10 rounded-md text-white text-xs placeholder-zinc-500 focus:outline-none focus:border-orange-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400 hover:text-white"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Filter Pills & Dropdown */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/5 text-xs">
+              {/* Status Filters */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(['all', 'active', 'due-today', 'completed'] as TaskFilter[]).map((f) => {
+                  const isSelected = filter === f;
+                  const labels: Record<TaskFilter, string> = {
+                    all: 'All',
+                    active: 'Pending',
+                    'due-today': 'Due today',
+                    completed: 'Completed',
+                    overdue: 'Overdue',
+                  };
+                  return (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setFilter(f)}
+                      className={`px-2.5 py-1 rounded text-xs transition-colors cursor-pointer ${
+                        isSelected
+                          ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 font-medium'
+                          : 'bg-white/5 text-zinc-400 hover:text-white border border-transparent'
+                      }`}
+                    >
+                      {labels[f]}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Sort & Course dropdowns */}
+              <div className="flex items-center space-x-2">
+                {uniqueCourses.length > 0 && (
+                  <select
+                    value={selectedCourse}
+                    onChange={(e) => setSelectedCourse(e.target.value)}
+                    aria-label="Filter by course"
+                    className="px-2 py-1 bg-black border border-white/10 rounded text-xs text-zinc-300 focus:outline-none"
+                  >
+                    <option value="all">All courses</option>
+                    {uniqueCourses.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as TaskSort)}
+                  aria-label="Sort tasks by"
+                  className="px-2 py-1 bg-black border border-white/10 rounded text-xs text-zinc-300 focus:outline-none"
+                >
+                  <option value="smart">Smart order</option>
+                  <option value="deadline">Soonest deadline</option>
+                  <option value="priority">Priority</option>
+                  <option value="effort-asc">Shortest effort</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Task Cards List */}
+          {filteredTasks.length > 0 ? (
+            <div className="space-y-3">
+              {filteredTasks.map((task, idx) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  index={idx}
+                  onToggleComplete={onToggleComplete}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  now={now}
+                  capacitySettings={capacitySettings}
+                  remainingEffort={remainingEffortMap ? remainingEffortMap[task.id] : undefined}
+                  onEmailInstructor={onEmailInstructor}
+                />
+              ))}
             </div>
           ) : (
-            <div className="max-w-md mx-auto space-y-3">
-              <span className="text-xs uppercase tracking-[0.25em] text-zinc-500 block">
-                FILTER // NO MATCH
-              </span>
-              <h3 className="font-display text-2xl sm:text-3xl text-white uppercase tracking-tight">
-                Zero Items Matching Query
-              </h3>
-              <p className="text-xs text-zinc-500">
-                No coursework matches your active filter or search keywords.
+            <div className="p-8 text-center rounded-lg border border-white/10 bg-zinc-950/40 space-y-2 text-xs">
+              <p className="text-zinc-400">
+                {searchQuery || filter !== 'all' || selectedCourse !== 'all'
+                  ? 'No tasks match your current filter.'
+                  : 'No tasks tracked yet.'}
               </p>
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setFilter('all');
-                  setSelectedCourse('all');
-                }}
-                type="button"
-                className="inline-flex items-center space-x-1.5 px-3 py-1.5 border border-white/20 text-xs text-zinc-300 hover:text-white transition-colors"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset Radar Filters</span>
-              </button>
+              {(searchQuery || filter !== 'all' || selectedCourse !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setFilter('all');
+                    setSelectedCourse('all');
+                  }}
+                  className="inline-flex items-center space-x-1 text-orange-400 hover:text-white pt-1"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Clear filters</span>
+                </button>
+              )}
             </div>
           )}
         </div>

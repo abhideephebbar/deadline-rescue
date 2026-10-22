@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Header } from './components/Header';
-import { DashboardStats } from './components/DashboardStats';
-import { SmartRecommendationCard } from './components/SmartRecommendationCard';
+import { StatusSentence } from './components/StatusSentence';
+import { NowCard } from './components/NowCard';
+import { NextUpList } from './components/NextUpList';
 import { ForecastStrip } from './components/ForecastStrip';
 import { TaskList } from './components/TaskList';
+import { MiniTimerBar } from './components/MiniTimerBar';
 import { TaskFormModal } from './components/TaskFormModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { CapacitySettingsModal } from './components/CapacitySettingsModal';
@@ -11,19 +13,15 @@ import { TriageModal } from './components/TriageModal';
 import { ResetWeekModal } from './components/ResetWeekModal';
 import { InstructorEmailModal } from './components/InstructorEmailModal';
 import { ImportTasksModal } from './components/ImportTasksModal';
-import { Stopwatch } from './components/Stopwatch';
-import { SideNav } from './components/SideNav';
-import { AnimatedNoise } from './components/AnimatedNoise';
-import { SplitFlapText, SplitFlapAudioProvider } from './components/SplitFlapText';
-import { ScrambleTextOnHover } from './components/ScrambleText';
-import { BitmapChevron } from './components/BitmapChevron';
 import { useTasks } from './hooks/useTasks';
 import { useCapacity } from './hooks/useCapacity';
 import { useStopwatch } from './hooks/useStopwatch';
 import { getRemainingEffortMap } from './utils/stopwatchIntegration';
 import { getCategoryCalibrations } from './utils/calibration';
+import { getSmartRecommendations } from './utils/ranking';
+import { getStatusSentence } from './utils/statusSentence';
 import { Task, Priority, TaskCategory } from './types';
-import { Plus } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 export function App() {
   const {
@@ -65,6 +63,7 @@ export function App() {
   const [isTriageModalOpen, setIsTriageModalOpen] = useState(false);
   const [isResetWeekModalOpen, setIsResetWeekModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   const [emailTaskTarget, setEmailTaskTarget] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
@@ -77,6 +76,24 @@ export function App() {
     }, 30000);
     return () => clearInterval(timer);
   }, []);
+
+  // Compute smart recommendations
+  const { topRecommendation, rankedQueue } = useMemo(
+    () => getSmartRecommendations(tasks, currentTime, remainingEffortMap, capacitySettings),
+    [tasks, currentTime, remainingEffortMap, capacitySettings]
+  );
+
+  // Following 2-3 tasks for "Next up"
+  const nextUpQueue = useMemo(
+    () => rankedQueue.slice(1, 4),
+    [rankedQueue]
+  );
+
+  // Plain supportive status sentence
+  const statusSentence = useMemo(
+    () => getStatusSentence(tasks, capacitySettings, currentTime),
+    [tasks, capacitySettings, currentTime]
+  );
 
   const handleOpenAddModal = () => {
     setEditingTask(null);
@@ -93,10 +110,17 @@ export function App() {
     if (stopwatch.status === 'idle' || stopwatch.status === 'stopped') {
       stopwatch.start();
     }
-    const stopwatchSection = document.getElementById('section-stopwatch');
-    if (stopwatchSection) {
-      stopwatchSection.scrollIntoView({ behavior: 'smooth' });
+    const nowCardElement = document.getElementById('now-card');
+    if (nowCardElement) {
+      nowCardElement.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const handleNotToday = (task: Task) => {
+    const currentDue = new Date(task.dueDateTime).getTime();
+    const deferByMs = 24 * 60 * 60 * 1000;
+    const newDueTime = Math.max(currentDue + deferByMs, currentTime.getTime() + deferByMs);
+    updateTask(task.id, { dueDateTime: new Date(newDueTime).toISOString() });
   };
 
   const handleModalSubmit = (data: {
@@ -121,273 +145,258 @@ export function App() {
     newTasks.forEach((t) => addTask(t));
   };
 
+  const handleStatusAction = (actionType: 'plan' | 'reset') => {
+    if (actionType === 'reset') {
+      setIsResetWeekModalOpen(true);
+    } else {
+      setIsTriageModalOpen(true);
+    }
+  };
+
   const candidateTask = tasks.find((t) => t.id === deleteCandidateId);
 
+  // Active task for mini-timer
+  const activeTimerTask = useMemo(() => {
+    if (stopwatch.selectedTaskId) {
+      return tasks.find((t) => t.id === stopwatch.selectedTaskId) || null;
+    }
+    return topRecommendation?.task || null;
+  }, [stopwatch.selectedTaskId, tasks, topRecommendation]);
+
   return (
-    <SplitFlapAudioProvider>
-      <div className="relative min-h-screen bg-[#0c0c0c] text-[#f5f5f5] font-sans selection:bg-orange-500 selection:text-black overflow-x-hidden">
-        {/* Animated Noise Overlay from v0 template */}
-        <AnimatedNoise opacity={0.035} />
+    <div className="min-h-screen bg-[#090909] text-zinc-100 font-sans selection:bg-orange-500 selection:text-black antialiased transition-colors">
+      {/* Slim Header */}
+      <Header
+        onOpenAddTask={handleOpenAddModal}
+        onOpenAsk={() => {
+          // Placeholder for Phase 6 Ask assistant
+          console.info('Ask assistant opened');
+        }}
+        onOpenCapacity={() => setIsCapacityModalOpen(true)}
+        onOpenImport={() => setIsImportModalOpen(true)}
+        onOpenResetWeek={() => setIsResetWeekModalOpen(true)}
+        onTakeTour={() => {
+          // Placeholder for Phase 5 Product Tour
+          console.info('Tour requested');
+        }}
+        onLoadDemoData={resetToSampleTasks}
+        onClearEverything={() => setIsClearConfirmOpen(true)}
+        weeklyCapacityHours={totalWeeklyCapacityHours}
+      />
 
-        {/* Minimalist Side Navigation Rail */}
-        <SideNav />
+      {/* Main Container: Mobile-first 375px -> 768px */}
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
+        {/* 1. Status Sentence replacing the 4 stat cards */}
+        <section aria-label="Current status">
+          <StatusSentence
+            sentence={statusSentence}
+            onAction={handleStatusAction}
+          />
+        </section>
 
-        {/* Top Header */}
-        <Header
-          onOpenAddTask={handleOpenAddModal}
-          onResetSamples={resetToSampleTasks}
-          onOpenCapacitySettings={() => setIsCapacityModalOpen(true)}
-          totalWeeklyCapacityHours={totalWeeklyCapacityHours}
-          onOpenResetWeek={() => setIsResetWeekModalOpen(true)}
-          onOpenImport={() => setIsImportModalOpen(true)}
-        />
+        {/* 2. Hero "Now" Card */}
+        <section id="now-card" aria-label="Recommended task">
+          <NowCard
+            recommendation={topRecommendation}
+            onToggleComplete={toggleComplete}
+            onNotToday={handleNotToday}
+            onEmailInstructor={(task) => setEmailTaskTarget(task)}
+            stopwatch={{
+              status: stopwatch.status,
+              displayElapsedMs: stopwatch.displayElapsedMs,
+              formattedTime: stopwatch.formattedTime,
+              start: () => {
+                if (topRecommendation?.task) {
+                  stopwatch.setSelectedTaskId(topRecommendation.task.id);
+                }
+                stopwatch.start();
+              },
+              pause: stopwatch.pause,
+              resume: stopwatch.resume,
+              stop: stopwatch.stop,
+              saveSession: stopwatch.saveSession,
+              resetToIdle: stopwatch.resetToIdle,
+              selectedTaskId: stopwatch.selectedTaskId,
+              setSelectedTaskId: stopwatch.setSelectedTaskId,
+              isSaved: stopwatch.isSaved,
+            }}
+          />
+        </section>
 
-        {/* Main Content Area (offset by side rail on desktop) */}
-        <div className="pl-4 md:pl-20 lg:pl-24 pr-4 sm:pr-8 py-8 sm:py-12 max-w-7xl mx-auto space-y-12 sm:space-y-16">
-          {/* Hero Section with Split-Flap Board Title */}
-          <section className="relative pt-4 sm:pt-8 border-b border-white/10 pb-12 sm:pb-16 grid-bg">
-            {/* Left Vertical Label */}
-            <div className="hidden lg:block absolute -left-12 top-1/2 -translate-y-1/2">
-              <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-zinc-600 -rotate-90 origin-left block whitespace-nowrap">
-                CONSOLE // RADAR
-              </span>
-            </div>
+        {/* 3. Next Up list */}
+        {nextUpQueue.length > 0 && (
+          <section aria-label="Next tasks">
+            <NextUpList
+              recommendations={nextUpQueue}
+              onStartTask={handleStartNow}
+              onToggleComplete={toggleComplete}
+            />
+          </section>
+        )}
 
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2 font-mono text-xs uppercase tracking-[0.25em] text-orange-400">
-                <span>[ 00 ]</span>
-                <span>CONTROLLED TRIAGE ENVIRONMENT</span>
-              </div>
+        {/* 4. This Week Compact Forecast Strip with Consequence Simulator */}
+        <section aria-label="Weekly workload forecast">
+          <ForecastStrip
+            tasks={tasks}
+            capacitySettings={capacitySettings}
+            now={currentTime}
+            onUpdateTaskDueDate={(taskId, newDueDate) => {
+              updateTask(taskId, { dueDateTime: newDueDate });
+            }}
+          />
+        </section>
 
-              {/* Split Flap Board H1 */}
-              <div className="overflow-x-auto py-2">
-                <SplitFlapText text="DEADLINE RESCUE" speed={55} />
-              </div>
+        {/* 5. Collapsible All Tasks List */}
+        <section aria-label="All coursework">
+          <TaskList
+            tasks={tasks}
+            onToggleComplete={toggleComplete}
+            onEdit={handleOpenEditModal}
+            onDelete={(id) => setDeleteCandidateId(id)}
+            onOpenAddTask={handleOpenAddModal}
+            now={currentTime}
+            capacitySettings={capacitySettings}
+            remainingEffortMap={remainingEffortMap}
+            onEmailInstructor={(task) => setEmailTaskTarget(task)}
+            onOpenImport={() => setIsImportModalOpen(true)}
+            isInitiallyExpanded={false}
+          />
+        </section>
+      </main>
 
-              <h2 className="font-display text-zinc-500 text-2xl sm:text-3xl tracking-wide uppercase">
-                Intelligent Academic Triage &amp; Load Management
+      {/* Floating Mini-Timer Bar (Visible when timer is active or paused) */}
+      <MiniTimerBar
+        activeTask={activeTimerTask}
+        status={stopwatch.status}
+        formattedTime={stopwatch.formattedTime}
+        onPause={stopwatch.pause}
+        onResume={stopwatch.resume}
+        onStop={stopwatch.stop}
+        onScrollToNow={() => {
+          document.getElementById('now-card')?.scrollIntoView({ behavior: 'smooth' });
+        }}
+      />
+
+      {/* Task Form Modal */}
+      <TaskFormModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingTask(null);
+        }}
+        onSubmit={handleModalSubmit}
+        initialTask={editingTask}
+        calibrations={calibrations}
+      />
+
+      {/* Delete Single Task Confirm Modal */}
+      <DeleteConfirmModal
+        isOpen={!!deleteCandidateId}
+        onClose={() => setDeleteCandidateId(null)}
+        onConfirm={() => {
+          if (deleteCandidateId) {
+            deleteTask(deleteCandidateId);
+            setDeleteCandidateId(null);
+          }
+        }}
+        taskTitle={candidateTask ? candidateTask.title : ''}
+      />
+
+      {/* Clear Everything Confirm Modal */}
+      {isClearConfirmOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="clear-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+        >
+          <div className="bg-[#141414] border border-white/10 rounded-xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <div className="flex items-center space-x-3 text-amber-400">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <h2 id="clear-title" className="text-base font-semibold text-white">
+                Clear all tasks?
               </h2>
-
-              <p className="font-mono text-xs sm:text-sm text-zinc-400 max-w-xl leading-relaxed">
-                We prioritize behavior, not just due dates. A tactical priority matrix designed for college students to calculate time deficits, protect safety buffers, and eliminate late submissions.
-              </p>
-
-              {/* Quick Jump Action Bar */}
-              <div className="pt-4 flex flex-wrap items-center gap-4 sm:gap-6">
-                <button
-                  onClick={handleOpenAddModal}
-                  type="button"
-                  className="group inline-flex items-center gap-2.5 border border-white/20 hover:border-orange-500 px-5 py-2.5 font-mono text-xs uppercase tracking-widest text-white hover:text-orange-400 transition-all cursor-pointer bg-black/40"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <ScrambleTextOnHover text="Initialize Task" as="span" duration={0.3} />
-                  <BitmapChevron className="transition-transform duration-200 group-hover:rotate-45" />
-                </button>
-
-                <a
-                  href="#section-triage"
-                  className="font-mono text-xs uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
-                >
-                  Inspect Triage Target &darr;
-                </a>
-
-                <a
-                  href="#section-forecast"
-                  className="font-mono text-xs uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
-                >
-                  7-Day Forecast &darr;
-                </a>
-
-                <a
-                  href="#section-stopwatch"
-                  className="font-mono text-xs uppercase tracking-widest text-orange-400 hover:text-orange-300 transition-colors"
-                >
-                  Session Stopwatch &darr;
-                </a>
-
-                <a
-                  href="#section-radar"
-                  className="font-mono text-xs uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
-                >
-                  View All Deadlines &darr;
-                </a>
-              </div>
             </div>
-
-            {/* Corner Badge */}
-            <div className="hidden sm:block absolute bottom-4 right-0 border border-white/10 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-zinc-500 bg-black/50">
-              BUILD v.02 // REALTIME RADAR
-            </div>
-          </section>
-
-          {/* Section 01: Smart Recommendation Hero Card */}
-          <section aria-label="Smart Task Recommendation">
-            <SmartRecommendationCard
-              tasks={tasks}
-              onToggleComplete={toggleComplete}
-              now={currentTime}
-              capacitySettings={capacitySettings}
-              remainingEffortMap={remainingEffortMap}
-              onStartNow={handleStartNow}
-              onEmailInstructor={(task) => setEmailTaskTarget(task)}
-            />
-          </section>
-
-          {/* Section 02: 7-Day Workload Forecast & Simulator */}
-          <section aria-label="7-Day Workload Forecast">
-            <ForecastStrip
-              tasks={tasks}
-              capacitySettings={capacitySettings}
-              now={currentTime}
-              onUpdateTaskDueDate={(taskId, newDueDate) => {
-                updateTask(taskId, { dueDateTime: newDueDate });
-              }}
-            />
-          </section>
-
-          {/* Section 02: Telemetry Statistics */}
-          <section aria-label="Telemetry Statistics">
-            <DashboardStats
-              tasks={tasks}
-              now={currentTime}
-              capacitySettings={capacitySettings}
-              onOpenCapacitySettings={() => setIsCapacityModalOpen(true)}
-              onOpenTriageModal={() => setIsTriageModalOpen(true)}
-              onOpenResetWeek={() => setIsResetWeekModalOpen(true)}
-            />
-          </section>
-
-          {/* Section 03: Stopwatch Feature */}
-          <Stopwatch tasks={tasks} stopwatch={stopwatch} />
-
-          {/* Section 04: All Coursework Radar Queue */}
-          <section aria-label="Coursework Radar">
-            <TaskList
-              tasks={tasks}
-              onToggleComplete={toggleComplete}
-              onEdit={handleOpenEditModal}
-              onDelete={(id) => setDeleteCandidateId(id)}
-              onOpenAddTask={handleOpenAddModal}
-              onResetSamples={resetToSampleTasks}
-              now={currentTime}
-              capacitySettings={capacitySettings}
-              remainingEffortMap={remainingEffortMap}
-              onEmailInstructor={(task) => setEmailTaskTarget(task)}
-              onOpenImport={() => setIsImportModalOpen(true)}
-            />
-          </section>
-
-          {/* Colophon & Footer */}
-          <footer className="border-t border-white/10 pt-8 pb-12 font-mono text-xs text-zinc-500 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="text-zinc-400 uppercase tracking-widest font-semibold">
-                DEADLINE RESCUE // COLOPHON
-              </div>
-              <p className="text-[11px] text-zinc-600">
-                Client-side telemetry stored locally in browser storage. Zero remote tracking.
-              </p>
-            </div>
-
-            <div className="flex items-center space-x-4 text-[11px]">
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              This will remove all your saved assignments and study sessions from this browser. This cannot be undone.
+            </p>
+            <div className="flex items-center justify-end space-x-3 pt-2">
               <button
-                onClick={resetToSampleTasks}
                 type="button"
-                className="text-zinc-400 hover:text-orange-400 transition-colors uppercase tracking-wider"
+                onClick={() => setIsClearConfirmOpen(false)}
+                className="px-3.5 py-1.5 text-xs text-zinc-300 hover:text-white rounded border border-white/10 hover:bg-white/5 transition-colors cursor-pointer"
               >
-                [Reload Samples]
+                Cancel
               </button>
-              <span>/</span>
               <button
-                onClick={clearAllTasks}
                 type="button"
-                className="text-zinc-500 hover:text-red-400 transition-colors uppercase tracking-wider"
+                onClick={() => {
+                  clearAllTasks();
+                  setIsClearConfirmOpen(false);
+                }}
+                className="px-3.5 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded transition-colors cursor-pointer"
               >
-                [Purge All Records]
+                Clear everything
               </button>
             </div>
-          </footer>
+          </div>
         </div>
+      )}
 
-        {/* Task Form Modal */}
-        <TaskFormModal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setEditingTask(null);
-          }}
-          onSubmit={handleModalSubmit}
-          initialTask={editingTask}
-          calibrations={calibrations}
-        />
+      {/* Capacity Settings Modal */}
+      <CapacitySettingsModal
+        isOpen={isCapacityModalOpen}
+        onClose={() => setIsCapacityModalOpen(false)}
+        settings={capacitySettings}
+        onUpdateDailyHours={updateDailyHours}
+        onAddBlockedSlot={addBlockedSlot}
+        onRemoveBlockedSlot={removeBlockedSlot}
+        onResetDefaults={resetCapacityDefaults}
+        tasks={tasks}
+        now={currentTime}
+      />
 
-        {/* Delete Confirm Modal */}
-        <DeleteConfirmModal
-          isOpen={!!deleteCandidateId}
-          onClose={() => setDeleteCandidateId(null)}
-          onConfirm={() => {
-            if (deleteCandidateId) {
-              deleteTask(deleteCandidateId);
-              setDeleteCandidateId(null);
-            }
-          }}
-          taskTitle={candidateTask ? candidateTask.title : ''}
-        />
+      {/* Tactical Emergency Triage Modal */}
+      <TriageModal
+        isOpen={isTriageModalOpen}
+        onClose={() => setIsTriageModalOpen(false)}
+        tasks={tasks}
+        capacitySettings={capacitySettings}
+        now={currentTime}
+        remainingEffortMap={remainingEffortMap}
+        onStartNow={handleStartNow}
+        onToggleComplete={toggleComplete}
+      />
 
-        {/* Capacity Settings Modal */}
-        <CapacitySettingsModal
-          isOpen={isCapacityModalOpen}
-          onClose={() => setIsCapacityModalOpen(false)}
-          settings={capacitySettings}
-          onUpdateDailyHours={updateDailyHours}
-          onAddBlockedSlot={addBlockedSlot}
-          onRemoveBlockedSlot={removeBlockedSlot}
-          onResetDefaults={resetCapacityDefaults}
-          tasks={tasks}
-          now={currentTime}
-        />
+      {/* Reset My Week Recovery Modal */}
+      <ResetWeekModal
+        isOpen={isResetWeekModalOpen}
+        onClose={() => setIsResetWeekModalOpen(false)}
+        tasks={tasks}
+        capacitySettings={capacitySettings}
+        now={currentTime}
+        onConfirmReset={(updatedTasks) => replaceTasks(updatedTasks)}
+      />
 
-        {/* Tactical Emergency Triage Modal */}
-        <TriageModal
-          isOpen={isTriageModalOpen}
-          onClose={() => setIsTriageModalOpen(false)}
-          tasks={tasks}
-          capacitySettings={capacitySettings}
-          now={currentTime}
-          remainingEffortMap={remainingEffortMap}
-          onStartNow={handleStartNow}
-          onToggleComplete={toggleComplete}
-        />
+      {/* Instructor Outreach Recovery Modal */}
+      <InstructorEmailModal
+        isOpen={!!emailTaskTarget}
+        onClose={() => setEmailTaskTarget(null)}
+        task={emailTaskTarget}
+        onMarkSubmitted={(taskId) => {
+          toggleComplete(taskId);
+          setEmailTaskTarget(null);
+        }}
+      />
 
-        {/* Reset My Week Recovery Modal */}
-        <ResetWeekModal
-          isOpen={isResetWeekModalOpen}
-          onClose={() => setIsResetWeekModalOpen(false)}
-          tasks={tasks}
-          capacitySettings={capacitySettings}
-          now={currentTime}
-          onConfirmReset={(updatedTasks) => replaceTasks(updatedTasks)}
-        />
-
-        {/* Instructor Outreach Recovery Modal */}
-        <InstructorEmailModal
-          isOpen={!!emailTaskTarget}
-          onClose={() => setEmailTaskTarget(null)}
-          task={emailTaskTarget}
-          onMarkSubmitted={(taskId) => {
-            toggleComplete(taskId);
-            setEmailTaskTarget(null);
-          }}
-        />
-
-        {/* Paste-to-Import Modal */}
-        <ImportTasksModal
-          isOpen={isImportModalOpen}
-          onClose={() => setIsImportModalOpen(false)}
-          onImportTasks={handleImportTasks}
-          now={currentTime}
-        />
-      </div>
-    </SplitFlapAudioProvider>
+      {/* Paste-to-Import Modal */}
+      <ImportTasksModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportTasks={handleImportTasks}
+        now={currentTime}
+      />
+    </div>
   );
 }
 

@@ -2,12 +2,11 @@ import React from 'react';
 import { 
   Check, 
   Clock, 
-  Hourglass, 
   Trash2, 
   Edit3, 
   AlertTriangle,
-  Zap,
-  Mail
+  Mail,
+  Hourglass
 } from 'lucide-react';
 import { Task, CapacitySettings } from '../types';
 import { getUrgencyInfo } from '../utils/date';
@@ -26,7 +25,6 @@ interface TaskCardProps {
 
 export const TaskCard: React.FC<TaskCardProps> = ({
   task,
-  index,
   onToggleComplete,
   onEdit,
   onDelete,
@@ -38,97 +36,81 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   const effort = typeof remainingEffort === 'number' ? remainingEffort : task.estimatedHours;
   const urgency = getUrgencyInfo(task.dueDateTime, effort, now, capacitySettings);
 
-  // Technical priority color styles
   const priorityBadgeStyles: Record<string, string> = {
-    urgent: 'border-red-500/60 text-red-400 bg-red-500/10',
-    high: 'border-orange-500/60 text-orange-400 bg-orange-500/10',
-    medium: 'border-amber-500/60 text-amber-400 bg-amber-500/10',
-    low: 'border-zinc-700 text-zinc-400 bg-zinc-900',
+    urgent: 'border-red-500/50 text-red-400 bg-red-500/10',
+    high: 'border-orange-500/50 text-orange-400 bg-orange-500/10',
+    medium: 'border-amber-500/50 text-amber-300 bg-amber-500/10',
+    low: 'border-zinc-700 text-zinc-400 bg-zinc-900/60',
   };
 
   return (
     <article
-      className={`group relative border transition-all duration-300 p-4 sm:p-5 flex flex-col justify-between ${
+      className={`rounded-lg border p-4 sm:p-4.5 flex flex-col justify-between transition-colors font-sans ${
         task.completed
-          ? 'bg-black/30 border-white/5 opacity-50'
-          : `bg-zinc-950 border-white/10 hover:border-orange-500/60 ${
+          ? 'bg-zinc-950/30 border-white/5 opacity-55'
+          : `bg-zinc-950/80 border-white/10 hover:border-white/25 ${
               urgency.isOverdue
-                ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.1)]'
+                ? 'border-amber-500/40'
                 : urgency.hasTimeDeficit
-                  ? 'border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.08)]'
-                  : urgency.hoursRemaining <= 24
-                    ? 'border-orange-500/40'
-                    : ''
+                ? 'border-orange-500/40'
+                : ''
             }`
       }`}
     >
-      {/* Subtle hover background layer matching template */}
-      <div className="absolute inset-0 bg-orange-500/[0.03] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-
-      {/* Top Header Row */}
-      <div className="relative z-10 flex items-start justify-between gap-3">
-        {/* Left: Square Checkbox & Metadata */}
-        <div className="flex items-start space-x-3 min-w-0">
+      {/* Top Row: Checkbox, Course, Title, Actions */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start space-x-3 min-w-0 flex-1">
+          {/* Checkbox button */}
           <button
             onClick={() => onToggleComplete(task.id)}
             type="button"
             aria-label={task.completed ? 'Reactivate task' : 'Mark task complete'}
-            className={`mt-0.5 shrink-0 w-5 h-5 rounded-none flex items-center justify-center border transition-all cursor-pointer ${
+            className={`mt-0.5 shrink-0 w-5 h-5 rounded flex items-center justify-center border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
               task.completed
                 ? 'bg-emerald-500 border-emerald-500 text-black font-bold'
-                : 'border-zinc-700 group-hover:border-orange-500 bg-black/40 text-transparent hover:text-orange-400'
+                : 'border-zinc-600 hover:border-orange-400 bg-black/40 text-transparent hover:text-orange-400'
             }`}
           >
             <Check className="w-3.5 h-3.5 stroke-[3]" />
           </button>
 
-          <div className="min-w-0">
-            {/* Index, Course, Urgency Badge Row */}
-            <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider mb-1.5">
-              <span className="text-zinc-600 font-semibold">
-                [{index < 9 ? `0${index + 1}` : index + 1}]
-              </span>
-
-              <span className="px-1.5 py-0.2 border border-white/15 bg-white/5 text-zinc-200 font-bold">
+          <div className="min-w-0 flex-1">
+            {/* Metadata row */}
+            <div className="flex flex-wrap items-center gap-1.5 text-xs mb-1">
+              <span className="font-bold text-zinc-200 bg-white/5 border border-white/10 px-1.5 py-0.2 rounded text-[11px]">
                 {task.course || 'GENERAL'}
               </span>
 
               {!task.completed ? (
                 <span
-                  className={`px-1.5 py-0.2 border font-semibold ${
+                  className={`px-1.5 py-0.2 rounded text-[11px] font-medium border ${
                     urgency.isOverdue
-                      ? 'border-red-500 text-red-400 bg-red-500/10'
+                      ? 'border-red-500/40 text-red-400 bg-red-500/10'
                       : urgency.hasTimeDeficit
-                        ? 'border-red-500 text-red-400 bg-red-500/10 animate-pulse'
-                        : urgency.hoursRemaining <= 24
-                          ? 'border-orange-500 text-orange-400 bg-orange-500/10'
-                          : 'border-white/10 text-zinc-400'
+                      ? 'border-orange-500/40 text-orange-400 bg-orange-500/10'
+                      : 'border-white/10 text-zinc-400'
                   }`}
                 >
-                  {urgency.label}
+                  {urgency.isOverdue ? 'Past due' : urgency.relativeTime}
                 </span>
               ) : (
-                <span className="px-1.5 py-0.2 border border-emerald-500/40 text-emerald-400 bg-emerald-500/10">
-                  RESOLVED
+                <span className="px-1.5 py-0.2 rounded text-[11px] border border-emerald-500/30 text-emerald-400 bg-emerald-500/10">
+                  Completed
                 </span>
               )}
 
-              <span
-                className={`px-1.5 py-0.2 border ${
-                  priorityBadgeStyles[task.priority]
-                }`}
-              >
+              <span className={`px-1.5 py-0.2 rounded text-[11px] border capitalize ${priorityBadgeStyles[task.priority]}`}>
                 {task.priority}
               </span>
 
-              <span className="text-zinc-500 hidden sm:inline">
-                // {task.category}
+              <span className="text-zinc-500 text-[11px] capitalize hidden sm:inline">
+                • {task.category}
               </span>
             </div>
 
             {/* Task Title */}
             <h4
-              className={`font-mono text-sm sm:text-base font-bold text-white uppercase tracking-tight leading-snug break-words ${
+              className={`text-sm sm:text-base font-semibold text-white leading-snug break-words ${
                 task.completed ? 'line-through text-zinc-500' : ''
               }`}
             >
@@ -137,20 +119,20 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
             {/* Notes */}
             {task.notes && (
-              <p className="mt-1 font-mono text-xs text-zinc-500 line-clamp-2 leading-relaxed">
-                // {task.notes}
+              <p className="mt-1 text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+                {task.notes}
               </p>
             )}
           </div>
         </div>
 
-        {/* Right Action Icons */}
+        {/* Edit & Delete Action Icons */}
         <div className="flex items-center space-x-1 shrink-0">
           <button
             onClick={() => onEdit(task)}
             type="button"
             aria-label="Edit task"
-            className="p-1.5 border border-transparent hover:border-white/10 text-zinc-500 hover:text-white transition-colors bg-transparent"
+            className="p-1.5 rounded text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
             <Edit3 className="w-3.5 h-3.5" />
           </button>
@@ -158,104 +140,83 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             onClick={() => onDelete(task.id)}
             type="button"
             aria-label="Delete task"
-            className="p-1.5 border border-transparent hover:border-red-500/40 text-zinc-500 hover:text-red-400 transition-colors bg-transparent"
+            className="p-1.5 rounded text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Overdue Recovery Prompt */}
+      {/* Overdue Recovery Guidance */}
       {urgency.isOverdue && !task.completed && (
-        <div className="relative z-10 my-2.5 p-2.5 border border-amber-500/30 bg-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
-          <div className="flex items-center space-x-1.5 text-amber-300">
-            <span className="font-bold text-[10px] uppercase tracking-wider">Recovery Step:</span>
-            <span className="text-[11px] text-zinc-300">Submit partial work or request an extension.</span>
-          </div>
+        <div className="my-2.5 p-2.5 rounded border border-amber-500/30 bg-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <span className="text-amber-200">
+            Submit what you have or request a brief extension:
+          </span>
           <div className="flex items-center space-x-2 shrink-0">
             {onEmailInstructor && (
               <button
                 type="button"
                 onClick={() => onEmailInstructor(task)}
-                className="px-2 py-1 bg-amber-500/20 hover:bg-amber-500 hover:text-black border border-amber-500/40 text-amber-300 text-[10px] uppercase font-bold transition-colors cursor-pointer flex items-center space-x-1"
+                className="px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500 hover:text-black border border-amber-500/40 text-amber-200 text-xs font-medium transition-colors cursor-pointer flex items-center space-x-1"
               >
                 <Mail className="w-3 h-3" />
-                <span>Email Instructor</span>
+                <span>Email instructor</span>
               </button>
             )}
             <button
               type="button"
               onClick={() => onToggleComplete(task.id)}
-              className="px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500 hover:text-black border border-emerald-500/40 text-emerald-300 text-[10px] uppercase font-bold transition-colors cursor-pointer flex items-center space-x-1"
+              className="px-2 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500 hover:text-black border border-emerald-500/40 text-emerald-300 text-xs font-medium transition-colors cursor-pointer flex items-center space-x-1"
             >
               <Check className="w-3 h-3" />
-              <span>Submit Partial</span>
+              <span>Submit partial</span>
             </button>
           </div>
         </div>
       )}
 
       {/* Footer Metrics Row */}
-      <div className="relative z-10 mt-3 pt-3 border-t border-white/5 flex flex-wrap items-center justify-between gap-y-2 gap-x-4 font-mono text-xs">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-zinc-400">
-          {/* Deadline Countdown */}
+      <div className="mt-3 pt-2.5 border-t border-white/5 flex flex-wrap items-center justify-between gap-y-1.5 gap-x-4 text-xs text-zinc-400">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {/* Due date */}
           <div className="flex items-center space-x-1.5">
-            <Clock className="w-3 h-3 text-zinc-500" />
-            <span
-              className={`font-medium ${
-                task.completed
-                  ? 'text-zinc-600'
-                  : urgency.isOverdue
-                    ? 'text-red-400 font-bold'
-                    : urgency.hoursRemaining <= 24
-                      ? 'text-orange-400 font-bold'
-                      : 'text-zinc-300'
-              }`}
-            >
-              {task.completed ? 'RESOLVED' : urgency.relativeTime}
-            </span>
-            <span className="text-zinc-600 hidden md:inline">({urgency.formattedDate})</span>
+            <Clock className="w-3.5 h-3.5 text-zinc-500" />
+            <span className="font-mono text-zinc-300">{urgency.formattedDate}</span>
           </div>
 
-          <span>/</span>
+          <span>•</span>
 
           {/* Effort */}
-          <div className="flex items-center space-x-1">
-            <Hourglass className="w-3 h-3 text-zinc-500" />
-            <span>
+          <div className="flex items-center space-x-1.5">
+            <Hourglass className="w-3.5 h-3.5 text-zinc-500" />
+            <span className="font-mono text-zinc-300">
               {typeof remainingEffort === 'number' && remainingEffort !== task.estimatedHours ? (
                 <span>
-                  <strong className="text-orange-400">{remainingEffort}H LEFT</strong> ({task.estimatedHours}H EST)
+                  <strong className="text-orange-400">{remainingEffort}h</strong> left of {task.estimatedHours}h
                 </span>
               ) : (
-                <span>{task.estimatedHours}H EFFORT</span>
+                <span>{task.estimatedHours}h effort</span>
               )}
             </span>
           </div>
 
-          {/* Buffer margin */}
+          {/* Buffer / Deficit margin */}
           {!task.completed && (
             <>
-              <span>/</span>
-              <div className="flex items-center space-x-1">
-                <Zap className="w-3 h-3 text-zinc-500" />
-                {urgency.hasTimeDeficit || urgency.isOverdue ? (
-                  <span className="text-red-400 font-semibold flex items-center space-x-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    <span>
-                      {urgency.isOverdue ? 'LATE' : `DEFICIT -${Math.abs(urgency.bufferHours).toFixed(1)}H`}
-                    </span>
+              <span>•</span>
+              {urgency.hasTimeDeficit || urgency.isOverdue ? (
+                <span className="text-orange-400 font-medium flex items-center space-x-1">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>
+                    {urgency.isOverdue ? 'Overdue' : `${Math.abs(urgency.bufferHours).toFixed(1)}h deficit`}
                   </span>
-                ) : (
-                  <span
-                    className={
-                      urgency.bufferHours <= 4 ? 'text-orange-400 font-medium' : 'text-zinc-400'
-                    }
-                  >
-                    BUFFER +{urgency.bufferHours.toFixed(1)}H
-                  </span>
-                )}
-              </div>
+                </span>
+              ) : (
+                <span className={urgency.bufferHours <= 4 ? 'text-amber-400' : 'text-zinc-400'}>
+                  +{urgency.bufferHours.toFixed(1)}h buffer
+                </span>
+              )}
             </>
           )}
         </div>
