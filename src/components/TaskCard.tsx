@@ -45,15 +45,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
 
   return (
     <article
-      className={`rounded-lg border p-4 sm:p-4.5 flex flex-col justify-between transition-colors font-sans ${
+      className={`rounded-xl border p-4 sm:p-4.5 flex flex-col justify-between transition-colors font-sans shadow-sm ${
         task.completed
           ? 'bg-zinc-950/30 border-white/5 opacity-55'
-          : `bg-zinc-950/80 border-white/10 hover:border-white/25 ${
-              urgency.isOverdue
-                ? 'border-amber-500/40'
-                : urgency.hasTimeDeficit
-                ? 'border-orange-500/40'
-                : ''
+          : `bg-surface hover:bg-raised border-white/[0.08] hover:border-white/20 ${
+              urgency.isOverdue ? 'border-amber-500/30' : ''
             }`
       }`}
     >

@@ -198,22 +198,22 @@ export function App() {
   return (
     <MotionConfig reducedMotion="user">
       <LazyMotion features={domAnimation}>
-        <div className="min-h-screen bg-[#090909] text-zinc-100 font-sans selection:bg-orange-500 selection:text-black antialiased transition-colors">
+        <div className="min-h-screen bg-background text-zinc-100 font-sans selection:bg-orange-500 selection:text-black antialiased transition-colors">
           {/* Slim Header */}
-      <Header
-        onOpenAddTask={handleOpenAddModal}
-        onOpenAsk={() => setIsAskModalOpen(true)}
-        onOpenCapacity={() => setIsCapacityModalOpen(true)}
-        onOpenImport={() => setIsImportModalOpen(true)}
-        onOpenResetWeek={() => setIsResetWeekModalOpen(true)}
-        onTakeTour={() => setIsTourActive(true)}
-        onLoadDemoData={resetToSampleTasks}
-        onClearEverything={() => setIsClearConfirmOpen(true)}
-        weeklyCapacityHours={totalWeeklyCapacityHours}
-      />
+          <Header
+            onOpenAddTask={handleOpenAddModal}
+            onOpenAsk={() => setIsAskModalOpen(true)}
+            onOpenCapacity={() => setIsCapacityModalOpen(true)}
+            onOpenImport={() => setIsImportModalOpen(true)}
+            onOpenResetWeek={() => setIsResetWeekModalOpen(true)}
+            onTakeTour={() => setIsTourActive(true)}
+            onLoadDemoData={resetToSampleTasks}
+            onClearEverything={() => setIsClearConfirmOpen(true)}
+            weeklyCapacityHours={totalWeeklyCapacityHours}
+          />
 
-      {/* Main Container: Mobile-first 375px -> 768px */}
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
+          {/* Main Container: Mobile-first 375px -> 768px -> 1280px unified layout */}
+          <main className="max-w-3xl mx-auto px-5 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {/* Tour Mode Indicator Badge */}
         {isTourActive && (
           <div className="flex items-center justify-center animate-fade-in">

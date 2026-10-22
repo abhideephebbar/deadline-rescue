@@ -60,28 +60,29 @@ export const Header: React.FC<HeaderProps> = ({
   }, [isMenuOpen]);
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-white/10 bg-[#0c0c0c]/90 dark:bg-[#0c0c0c]/90 backdrop-blur-md">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+    <header className="sticky top-0 z-30 w-full border-b border-border/80 bg-background/90 backdrop-blur-md">
+      <div className="max-w-3xl mx-auto px-5 sm:px-6 h-14 flex items-center justify-between">
         {/* App Title */}
         <div className="flex items-center space-x-2.5">
           <span className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)]" />
-          <h1 className="text-base font-semibold tracking-tight text-white dark:text-white">
+          <h1 className="text-base font-semibold tracking-tight text-white">
             Deadline Rescue
           </h1>
         </div>
 
         {/* Primary Controls */}
         <div className="flex items-center space-x-2 sm:space-x-2.5">
-          {/* Ask Button (Wired in Phase 6) */}
+          {/* Ask Button */}
           <button
             id="tour-ask-button"
             onClick={onOpenAsk}
             type="button"
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-md border border-white/15 hover:border-white/30 text-zinc-300 hover:text-white text-xs font-medium transition-colors bg-white/5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+            aria-label="Ask about schedule"
+            className="inline-flex items-center justify-center space-x-1.5 px-3 py-1.5 min-h-[38px] sm:min-h-[36px] rounded-lg border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white text-xs font-medium transition-colors bg-white/5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
             title="Ask anything about your tasks and schedule"
           >
             <Sparkles className="w-3.5 h-3.5 text-orange-400" />
-            <span>Ask</span>
+            <span className="hidden sm:inline">Ask</span>
           </button>
 
           {/* Add Task Primary Action */}
@@ -89,10 +90,11 @@ export const Header: React.FC<HeaderProps> = ({
             id="tour-add-task"
             onClick={onOpenAddTask}
             type="button"
-            className="inline-flex items-center space-x-1 px-3.5 py-1.5 rounded-md bg-orange-500 hover:bg-orange-400 text-black text-xs font-semibold tracking-wide transition-colors shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+            aria-label="Add new task"
+            className="inline-flex items-center justify-center space-x-1 px-3.5 py-1.5 min-h-[38px] sm:min-h-[36px] rounded-lg bg-orange-500 hover:bg-orange-400 text-black text-xs font-semibold tracking-wide transition-colors shadow-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Add task</span>
+            <span className="hidden sm:inline">Add task</span>
           </button>
 
           {/* Overflow "..." Menu */}
@@ -104,7 +106,7 @@ export const Header: React.FC<HeaderProps> = ({
               aria-label="More options"
               aria-expanded={isMenuOpen}
               aria-haspopup="true"
-              className="p-1.5 rounded-md border border-white/15 hover:border-white/30 text-zinc-300 hover:text-white transition-colors bg-white/5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+              className="p-2 min-h-[38px] min-w-[38px] flex items-center justify-center rounded-lg border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white transition-colors bg-white/5 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
             >
               <MoreHorizontal className="w-4 h-4" />
             </button>

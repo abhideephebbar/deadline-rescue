@@ -13,24 +13,29 @@ export default {
         mono: ['"IBM Plex Mono"', 'monospace'],
       },
       colors: {
-        background: '#0c0c0c',
+        background: 'var(--bg-page)',
+        surface: 'var(--bg-surface)',
+        raised: 'var(--bg-raised)',
         card: {
-          DEFAULT: '#141414',
-          foreground: '#f5f5f5',
-          hover: '#191919',
+          DEFAULT: 'var(--bg-surface)',
+          foreground: 'var(--text-main)',
+          hover: 'var(--bg-raised)',
         },
         border: {
-          DEFAULT: '#262626',
-          subtle: 'rgba(255, 255, 255, 0.08)',
+          DEFAULT: 'var(--border-subtle)',
+          subtle: 'var(--border-subtle)',
+          highlight: 'var(--border-highlight)',
         },
         accent: {
-          DEFAULT: '#f97316',
+          DEFAULT: 'var(--accent)',
+          hover: 'var(--accent-hover)',
+          muted: 'var(--accent-muted)',
           orange: '#ff5500',
           glow: 'rgba(249, 115, 22, 0.15)',
         },
         muted: {
-          DEFAULT: '#222222',
-          foreground: '#8c8c8c',
+          DEFAULT: 'var(--text-muted)',
+          foreground: 'var(--text-muted)',
         }
       },
       transitionDuration: {

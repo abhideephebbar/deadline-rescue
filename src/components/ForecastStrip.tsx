@@ -99,10 +99,10 @@ export const ForecastStrip: React.FC<ForecastStripProps> = ({
               type="button"
               onClick={() => handleDayClick(idx)}
               aria-expanded={isSelected}
-              className={`p-2 sm:p-3 rounded-lg border text-left transition-colors cursor-pointer flex flex-col justify-between ${
+              className={`p-2 sm:p-2.5 rounded-xl border text-left transition-colors cursor-pointer flex flex-col justify-between ${
                 isSelected
                   ? 'border-orange-500 bg-orange-950/20'
-                  : 'border-white/10 hover:border-white/20 bg-zinc-950/60'
+                  : 'border-white/[0.08] hover:border-white/20 bg-surface'
               }`}
             >
               {/* Day Name */}
@@ -144,7 +144,7 @@ export const ForecastStrip: React.FC<ForecastStripProps> = ({
       {/* Expanded Day Details & What-If Delay Simulator */}
       <Collapse isOpen={isExpanded && selectedDay !== null}>
         {selectedDay && (
-          <div className="rounded-lg border border-white/15 bg-zinc-950 p-4 space-y-4 text-xs mt-3">
+          <div className="rounded-xl border border-white/[0.08] bg-surface p-4 space-y-4 text-xs mt-3 shadow-lg">
           <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
             <div className="flex items-center space-x-2">
               <Calendar className="w-3.5 h-3.5 text-orange-400" />

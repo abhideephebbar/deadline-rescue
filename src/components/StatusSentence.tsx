@@ -11,20 +11,17 @@ export const StatusSentence: React.FC<StatusSentenceProps> = ({ sentence, onActi
   const isAttention = sentence.tone === 'attention';
 
   return (
-    <div
-      className={`px-4 py-3 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-colors ${
-        isAttention
-          ? 'bg-amber-950/20 border-amber-500/30 text-amber-200'
-          : 'bg-zinc-900/40 border-white/10 text-zinc-300'
-      }`}
-    >
-      <div className="flex items-center space-x-2.5 text-sm font-sans">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-sm font-sans">
+      <div className="flex items-center space-x-2.5">
         <span
           className={`w-2 h-2 rounded-full shrink-0 ${
             isAttention ? 'bg-amber-400' : 'bg-emerald-400'
           }`}
+          aria-hidden="true"
         />
-        <span className="leading-snug">{sentence.text}</span>
+        <span className="text-zinc-300 font-medium leading-relaxed">
+          {sentence.text}
+        </span>
       </div>
 
       {sentence.actionLabel && sentence.actionType && onAction && (
