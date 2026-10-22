@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Header } from './components/Header';
 import { DashboardStats } from './components/DashboardStats';
 import { SmartRecommendationCard } from './components/SmartRecommendationCard';
+import { ForecastStrip } from './components/ForecastStrip';
 import { TaskList } from './components/TaskList';
 import { TaskFormModal } from './components/TaskFormModal';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
@@ -163,6 +164,13 @@ export function App() {
                 </a>
 
                 <a
+                  href="#section-forecast"
+                  className="font-mono text-xs uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
+                >
+                  7-Day Forecast &darr;
+                </a>
+
+                <a
                   href="#section-stopwatch"
                   className="font-mono text-xs uppercase tracking-widest text-orange-400 hover:text-orange-300 transition-colors"
                 >
@@ -192,6 +200,18 @@ export function App() {
               now={currentTime}
               capacitySettings={capacitySettings}
               remainingEffortMap={remainingEffortMap}
+            />
+          </section>
+
+          {/* Section 02: 7-Day Workload Forecast & Simulator */}
+          <section aria-label="7-Day Workload Forecast">
+            <ForecastStrip
+              tasks={tasks}
+              capacitySettings={capacitySettings}
+              now={currentTime}
+              onUpdateTaskDueDate={(taskId, newDueDate) => {
+                updateTask(taskId, { dueDateTime: newDueDate });
+              }}
             />
           </section>
 

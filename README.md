@@ -65,7 +65,13 @@ npm test
    - Non-intrusive estimate suggestion banners propose realistic adjustments with transparent reasoning ("Labs usually take about 1.4x your estimate. Use 3.5h?").
    - Never overrides user estimates silently.
 
-5. **Task Management & Form Validation**:
+5. **7-Day Workload Forecast & "What if I delay this?" Simulator**:
+   - Visual 7-day strip tracking daily load vs capacity with clear / filling up / overloaded status.
+   - Click-through reveals the specific assignments driving the workload for any day.
+   - Interactive deferral simulation recalculates weekly capacity live and explains the exact consequence in a single clear sentence.
+   - Warns students immediately if postponing a task would push it past its deadline or cause late penalties.
+
+6. **Task Management & Form Validation**:
    - Add and edit assignments with title, course code (e.g., `CS 350`), category (assignment, lab, exam, quiz, etc.), due date & time, estimated effort (hours), priority, and notes.
    - Real-time form validation with inline feedback.
    - Fast presets for college students (`Tonight 11:59 PM`, `Tomorrow 11:59 PM`, `In 2 Days`, `+0.5h`, `+1h`, `+2h`, etc.).

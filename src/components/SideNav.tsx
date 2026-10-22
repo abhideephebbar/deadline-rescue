@@ -3,9 +3,10 @@ import { cn } from '../lib/utils';
 
 const navItems = [
   { id: 'section-triage', label: '01 / Triage' },
-  { id: 'section-telemetry', label: '02 / Telemetry' },
-  { id: 'section-stopwatch', label: '03 / Chrono' },
-  { id: 'section-radar', label: '04 / Radar' },
+  { id: 'section-forecast', label: '02 / Forecast' },
+  { id: 'section-telemetry', label: '03 / Load' },
+  { id: 'section-stopwatch', label: '04 / Chrono' },
+  { id: 'section-radar', label: '05 / Radar' },
 ];
 
 export function SideNav() {
