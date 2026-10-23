@@ -21,7 +21,7 @@ import {
   checkGlobalDailyLimit,
   wrapUntrustedInput,
   sanitizeTaskList,
-} from './_lib/guard';
+} from './_lib/guard.js';
 
 declare const process: { env: Record<string, string | undefined> };
 

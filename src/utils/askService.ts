@@ -6,7 +6,7 @@ import { parseCourseworkText } from './importParser';
 import { formatRelativeTime } from './date';
 import { buildAppFacts, AppFacts } from './facts';
 
-export type FallbackReason = 'no_key' | 'model_unavailable' | 'rate_limited' | 'error';
+export type FallbackReason = 'no_key' | 'model_unavailable' | 'rate_limited' | 'error' | 'server_error';
 
 export interface GroundedConfirmation {
   type: 'add_task' | 'set_capacity' | 'drop_task' | 'reschedule_task';
@@ -945,6 +945,7 @@ export async function processAskQuery(
   }
 
   let serverData: any = null;
+  let fetchFailed = false;
 
   // 2. Attempt serverless API call with rich grounding facts
   try {
@@ -974,14 +975,12 @@ export async function processAskQuery(
 
     if (res.ok) {
       const data = await res.json();
-      if (!data.fallbackToLocal) {
-        serverData = data;
-      } else {
-        serverData = data; // Carries fallbackReason
-      }
+      serverData = data;
+    } else {
+      fetchFailed = true;
     }
   } catch {
-    // Fall back to rule-based offline processing
+    fetchFailed = true;
   }
 
   // 3. If server responded with Gemini tool call or text, process it
@@ -1007,6 +1006,7 @@ export async function processAskQuery(
 
   // 4. Otherwise, use offline rule-based intent parsing
   const offline = classifyOfflineQuery(query, context);
-  const fallbackReason = serverData?.fallbackReason || 'model_unavailable';
+  const fallbackReason: FallbackReason =
+    serverData?.fallbackReason || (fetchFailed ? 'server_error' : 'model_unavailable');
   return groundIntent(offline.intent, offline.parameters, offline.reply, context, 'rule-based', fallbackReason);
 }

@@ -5,6 +5,7 @@ import {
   groundToolCall,
   checkLocalSmallTalk,
   resolveTaskRef,
+  processAskQuery,
   AskContextSnapshot,
 } from '../askService';
 import { buildAppFacts } from '../facts';
@@ -325,6 +326,35 @@ describe('Grounded Ask Assistant & Conversational Engine (Assistant v2)', () => 
     it('maps rate_limited fallbackReason properly', () => {
       const answer = groundIntent('unknown', {}, '', context, 'rule-based', 'rate_limited');
       expect(answer.fallbackReason).toBe('rate_limited');
+    });
+
+    it('maps server_error fallbackReason properly', () => {
+      const answer = groundIntent('unknown', {}, '', context, 'rule-based', 'server_error');
+      expect(answer.fallbackReason).toBe('server_error');
+    });
+
+    it('sets server_error fallbackReason when fetch fails or throws in processAskQuery', async () => {
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (() => Promise.reject(new Error('Network error'))) as any;
+      try {
+        const result = await processAskQuery('Explain Operating Systems', context);
+        expect(result.source).toBe('rule-based');
+        expect(result.fallbackReason).toBe('server_error');
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it('sets server_error fallbackReason when fetch returns a non-OK status in processAskQuery', async () => {
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (() => Promise.resolve({ ok: false, status: 500 })) as any;
+      try {
+        const result = await processAskQuery('Explain Operating Systems', context);
+        expect(result.source).toBe('rule-based');
+        expect(result.fallbackReason).toBe('server_error');
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
     });
   });
 });

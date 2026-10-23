@@ -11,11 +11,11 @@ import {
   checkRateLimit,
   checkGlobalDailyLimit,
   wrapUntrustedInput,
-} from './_lib/guard';
+} from './_lib/guard.js';
 
 declare const process: { env: Record<string, string | undefined> };
 
-export type FallbackReason = 'no_key' | 'model_unavailable' | 'rate_limited' | 'error';
+export type FallbackReason = 'no_key' | 'model_unavailable' | 'rate_limited' | 'error' | 'server_error';
 
 export interface AskServerResponse {
   reply: string;

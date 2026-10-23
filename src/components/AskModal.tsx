@@ -64,8 +64,31 @@ export const AskModal: React.FC<AskModalProps> = ({
   ]);
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [healthStatus, setHealthStatus] = useState<string | null>(null);
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleCheckAiStatus = async () => {
+    setIsCheckingHealth(true);
+    try {
+      const res = await fetch('/api/health');
+      if (!res.ok) {
+        setHealthStatus(`Server responded with HTTP ${res.status}`);
+        return;
+      }
+      const data = await res.json();
+      if (data.hasKey) {
+        setHealthStatus(`AI key found, model ${data.model || 'gemini-3.5-flash-lite'}`);
+      } else {
+        setHealthStatus('No AI key set on the server');
+      }
+    } catch {
+      setHealthStatus('Could not reach the server');
+    } finally {
+      setIsCheckingHealth(false);
+    }
+  };
 
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
@@ -196,21 +219,33 @@ export const AskModal: React.FC<AskModalProps> = ({
     let tooltip = 'Offline mode: running with local rule engine';
     if (reason === 'no_key') {
       tooltip = 'Offline mode: GEMINI_API_KEY is not configured';
+    } else if (reason === 'server_error') {
+      tooltip = 'Offline mode: server error encountered';
     } else if (reason === 'model_unavailable') {
       tooltip = 'Offline mode: AI service temporarily unavailable';
     } else if (reason === 'rate_limited') {
       tooltip = 'Offline mode: AI rate limit reached';
     } else if (reason === 'error') {
-      tooltip = 'Offline mode: server error encountered';
+      tooltip = 'Offline mode: an error occurred';
     }
 
     return (
-      <span
-        title={tooltip}
-        className="text-[10px] px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-zinc-400 cursor-help"
-      >
-        Offline mode (limited)
-      </span>
+      <div className="flex items-center space-x-1.5">
+        <span
+          title={tooltip}
+          className="text-[10px] px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-zinc-400 cursor-help"
+        >
+          Offline mode (limited)
+        </span>
+        <button
+          type="button"
+          onClick={handleCheckAiStatus}
+          disabled={isCheckingHealth}
+          className="text-[10px] text-orange-400 hover:text-orange-300 underline cursor-pointer disabled:opacity-50"
+        >
+          {isCheckingHealth ? 'Checking...' : 'Check AI status'}
+        </button>
+      </div>
     );
   };
 
@@ -266,6 +301,21 @@ export const AskModal: React.FC<AskModalProps> = ({
                     </span>
                     {renderSourceBadge(msg.source, msg.fallbackReason)}
                   </div>
+
+                  {/* AI Health Status feedback */}
+                  {healthStatus && (
+                    <div className="text-[11px] text-zinc-300 bg-black/40 border border-white/10 px-2.5 py-1.5 rounded-lg flex items-center justify-between font-sans">
+                      <span>{healthStatus}</span>
+                      <button
+                        type="button"
+                        onClick={() => setHealthStatus(null)}
+                        aria-label="Dismiss status message"
+                        className="text-zinc-500 hover:text-zinc-300 text-xs ml-2 cursor-pointer"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
 
                   {/* Message Text */}
                   <p className="leading-relaxed text-zinc-100 text-sm font-sans whitespace-pre-line">
