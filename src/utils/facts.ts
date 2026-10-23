@@ -1,7 +1,8 @@
-import { Task, CapacitySettings } from '../types';
+import { Task, CapacitySettings, StopwatchSession } from '../types';
 import { getSmartRecommendations } from './ranking';
 import { calculateDailyLoads, getAvailableWorkingHours } from './capacity';
 import { formatRelativeTime } from './date';
+import { getTaskLoggedHours } from './stopwatchIntegration';
 
 export interface TaskSummaryFact {
   id: string;
@@ -11,6 +12,7 @@ export interface TaskSummaryFact {
   dueRelative: string;
   estimatedHours: number;
   remainingEffort: number;
+  loggedHours?: number;
   priority: string;
   category: string;
   bufferHours: number;
@@ -27,6 +29,7 @@ export interface AppFacts {
     dueRelative: string;
     hours: number;
     remainingEffort: number;
+    loggedHours?: number;
     reason: string;
   } | null;
   today: {
@@ -48,9 +51,11 @@ export interface AppFacts {
     course: string;
     dueRelative: string;
     remainingEffort: number;
+    loggedHours?: number;
   }>;
   totalActiveCount: number;
   totalActiveHours: number;
+  totalLoggedHours?: number;
 }
 
 /**
@@ -60,8 +65,10 @@ export function buildAppFacts(
   tasks: Task[],
   capacitySettings: CapacitySettings,
   now: Date = new Date(),
-  remainingEffortMap?: Record<string, number>
+  remainingEffortMap?: Record<string, number>,
+  stopwatchSessions?: StopwatchSession[]
 ): AppFacts {
+  const sessions = Array.isArray(stopwatchSessions) ? stopwatchSessions : [];
   const incomplete = tasks.filter((t) => !t.completed && !t.dropped);
 
   const { topRecommendation, rankedQueue, catchUpQueue } = getSmartRecommendations(
@@ -89,6 +96,10 @@ export function buildAppFacts(
       return sum + rem;
     }, 0) * 10
   ) / 10;
+
+  const totalLogged = Math.round(
+    incomplete.reduce((sum, t) => sum + getTaskLoggedHours(t.id, sessions), 0) * 100
+  ) / 100;
 
   const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const weekday = weekdays[now.getDay()];
@@ -120,6 +131,7 @@ export function buildAppFacts(
       dueRelative: formatRelativeTime(hoursDiff),
       hours: t.estimatedHours,
       remainingEffort: rem,
+      loggedHours: getTaskLoggedHours(t.id, sessions),
       reason: topRecommendation.explanation,
     };
   }
@@ -144,6 +156,7 @@ export function buildAppFacts(
         dueRelative: formatRelativeTime(hoursDiff),
         estimatedHours: t.estimatedHours,
         remainingEffort: rem,
+        loggedHours: getTaskLoggedHours(t.id, sessions),
         priority: t.priority,
         category: t.category,
         bufferHours: buffer,
@@ -162,6 +175,7 @@ export function buildAppFacts(
       course: t.course,
       dueRelative: formatRelativeTime(hoursDiff),
       remainingEffort: rem,
+      loggedHours: getTaskLoggedHours(t.id, sessions),
     };
   });
 
@@ -185,5 +199,6 @@ export function buildAppFacts(
     nextUp,
     totalActiveCount: incomplete.length,
     totalActiveHours: totalEffort,
+    totalLoggedHours: totalLogged,
   };
 }

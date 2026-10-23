@@ -1,4 +1,4 @@
-import { Task, CapacitySettings, DayOfWeek } from '../types';
+import { Task, CapacitySettings, DayOfWeek, StopwatchSession } from '../types';
 import { calculateTaskScore, getSmartRecommendations } from './ranking';
 import { calculateDailyLoads } from './capacity';
 import { simulateTaskDelay } from './forecast';
@@ -7,6 +7,11 @@ import { formatRelativeTime } from './date';
 import { buildAppFacts, AppFacts } from './facts';
 
 export type FallbackReason = 'no_key' | 'model_unavailable' | 'rate_limited' | 'error' | 'server_error';
+
+export interface PendingOffer {
+  kind: 'start_task';
+  taskId: string;
+}
 
 export interface GroundedConfirmation {
   type: 'add_task' | 'set_capacity' | 'drop_task' | 'reschedule_task';
@@ -25,12 +30,16 @@ export interface GroundedAnswer {
   clarificationOptions?: Array<{ label: string; query: string }>;
   suggestionChips?: string[];
   referencedTaskId?: string;
+  pendingOffer?: PendingOffer;
+  cooldownTaskId?: string;
 }
 
 export interface AskMessageHistoryItem {
   role: 'user' | 'assistant';
   text: string;
   taskId?: string;
+  pendingOffer?: PendingOffer;
+  suggestionChips?: string[];
 }
 
 export interface AskContextSnapshot {
@@ -39,6 +48,9 @@ export interface AskContextSnapshot {
   capacitySettings: CapacitySettings;
   now: Date;
   history?: AskMessageHistoryItem[];
+  offeredTaskIds?: string[];
+  onStartTask?: (taskId: string) => void;
+  stopwatchSessions?: StopwatchSession[];
 }
 
 const STOP_WORDS = new Set([
@@ -76,94 +88,214 @@ const DAY_NAME_KEYS: Record<string, DayOfWeek> = {
 };
 
 /**
+ * Checks if text is an affirmative confirmation.
+ * Accepts: yes, yeah, yep, yup, sure, ok do it, let's go, go ahead, please, do it.
+ */
+export function isAffirmative(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+  const clean = text.toLowerCase().trim().replace(/[.,!?;:]/g, '');
+  return /^(yes|yeah|yep|yup|sure|ok do it|okay do it|lets go|let's go|go ahead|please|do it|yes please|sure thing)$/i.test(
+    clean
+  );
+}
+
+/**
+ * Checks if text is a negative decline.
+ * Accepts: no, nah, not now, later, not today, nope, no thanks.
+ */
+export function isNegative(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+  const clean = text.toLowerCase().trim().replace(/[.,!?;:]/g, '');
+  return /^(no|nah|not now|later|not today|nope|no thanks)$/i.test(clean);
+}
+
+/**
+ * Checks whether user query asks about priorities, what to do next, or study hours/time.
+ */
+export function isPriorityOrTimeQuery(message: string): boolean {
+  if (!message || typeof message !== 'string') return false;
+  const lower = message.toLowerCase().trim();
+  return (
+    /\b(priority|priorities|top task|do first|first thing)\b/i.test(lower) ||
+    /\b(what(\s+should\s+i|\s+to|\s+do\s+i|\s+can\s+i)?\s+(do|work\s+on)?\s*(next|now|first)?)\b/i.test(lower) ||
+    /\b(where\s+(to|do\s+i|should\s+i)\s+(start|begin))\b/i.test(lower) ||
+    /\b(whats\s+next|what's\s+next)\b/i.test(lower) ||
+    /\b(hours?|tonight|today|time|available)\b/i.test(lower)
+  );
+}
+
+/**
+ * Pure function determining whether the assistant may offer to start a task.
+ * Constraints:
+ * 1. At most once per task per session.
+ * 2. Never in two consecutive replies.
+ * 3. Only when user query is about priorities, what to do next, or time.
+ */
+export function shouldOfferStart(
+  state: {
+    offeredTaskIds?: Set<string> | string[];
+    lastReplyHadOffer?: boolean;
+    history?: AskMessageHistoryItem[];
+    targetTaskId?: string;
+  },
+  message: string
+): boolean {
+  if (!message || typeof message !== 'string') return false;
+
+  // 1. Must be about priorities, what to do next, or time
+  if (!isPriorityOrTimeQuery(message)) {
+    return false;
+  }
+
+  // 2. Never in two consecutive replies
+  const lastHadOffer =
+    state.lastReplyHadOffer ??
+    Boolean(
+      state.history &&
+        (() => {
+          for (let i = state.history.length - 1; i >= 0; i--) {
+            if (state.history[i].role === 'assistant') {
+              return Boolean(state.history[i].pendingOffer);
+            }
+          }
+          return false;
+        })()
+    );
+
+  if (lastHadOffer) {
+    return false;
+  }
+
+  // 3. At most once per task per session
+  if (state.targetTaskId) {
+    const offered = state.offeredTaskIds;
+    if (offered instanceof Set && offered.has(state.targetTaskId)) {
+      return false;
+    }
+    if (Array.isArray(offered) && offered.includes(state.targetTaskId)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Determines whether a message is schedule-related.
+ * Keywords: due, deadline, task, assignment, lab, exam, schedule, plan, week, today, tomorrow, hours, priority, skip, move, add;
+ * or a task title/course match (excluding concept questions);
+ * or the last assistant message made a schedule offer.
+ */
+export function isScheduleRelated(
+  message: string,
+  history?: AskMessageHistoryItem[],
+  tasks: Task[] = []
+): boolean {
+  if (!message || typeof message !== 'string') return false;
+  const lower = message.toLowerCase().trim();
+
+  // 1. Explicit schedule keywords
+  const scheduleKeywords =
+    /\b(due|deadline|deadlines|task|tasks|assignment|assignments|lab|labs|exam|exams|quiz|quizzes|project|projects|reading|readings|schedule|schedules|plan|planning|week|today|tomorrow|tonight|hours|hour|hrs|priority|priorities|skip|move|postpone|delay|add|drop|overdue|buffer|capacity|workload|first|next|start)\b/i;
+  if (scheduleKeywords.test(lower)) {
+    return true;
+  }
+
+  // 2. Study advice / concept queries are NOT schedule-related
+  const isStudyAdviceQuery =
+    /^(how\s+(do\s+i|can\s+i|to)\s+(revise|study|understand|learn)|what\s+is|explain\b)/i.test(lower);
+  if (!isStudyAdviceQuery && tasks.length > 0) {
+    const matches = findMatchingTasks(message, tasks);
+    if (matches.length > 0) {
+      return true;
+    }
+  }
+
+  // 3. Last assistant message was a schedule offer
+  if (history && history.length > 0) {
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i].role === 'assistant') {
+        if (history[i].pendingOffer) {
+          return true;
+        }
+        break;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Filters suggestion chips to respect strict budget rules:
+ * - Max 3
+ * - Never repeat identical chips in consecutive messages
+ */
+export function sanitizeChips(
+  chips?: string[],
+  previousChips?: string[]
+): string[] | undefined {
+  if (!chips || chips.length === 0) return undefined;
+  const sliced = chips.slice(0, 3);
+  if (previousChips && previousChips.length === sliced.length) {
+    const same = sliced.every((c, idx) => c.toLowerCase() === previousChips[idx]?.toLowerCase());
+    if (same) return undefined;
+  }
+  return sliced;
+}
+
+/**
  * Handles fast local small talk and conversational queries without a network request.
+ * Greetings -> one short friendly line with no task data ("Hey! What's up?").
+ * Thanks -> "Anytime."
+ * Distress -> keeps empathy without automatically pushing tasks; offers two chips ("Make a small plan", "Just talk").
  */
 export function checkLocalSmallTalk(
   query: string,
-  context: AskContextSnapshot,
-  facts?: AppFacts
+  _context?: AskContextSnapshot,
+  _facts?: AppFacts
 ): GroundedAnswer | null {
   const lower = query.toLowerCase().trim();
-  const appFacts = facts || buildAppFacts(context.tasks, context.capacitySettings, context.now, context.remainingEffortMap);
 
   // 1. Distress / Overwhelmed ("I'm so overwhelmed", "stressed", "swamped", "too much")
   if (/\b(overwhelmed|stressed|swamped|too much|can't do this|burnout|panicking|freaking out)\b/i.test(lower)) {
-    if (appFacts.topTask) {
-      return {
-        reply: `Take a deep breath—having a packed week is really tough, but you don't have to tackle it all at once. Let's just focus on one small win: open your ${appFacts.topTask.title} (${appFacts.topTask.course}) and spend 10 minutes skimming the first problem. You've got this.`,
-        source: 'rule-based',
-        referencedTaskId: appFacts.topTask.id,
-        suggestionChips: [
-          `Start ${appFacts.topTask.title}`,
-          'What if I skip a task?',
-          'I only have 2 hours tonight',
-        ],
-      };
-    }
     return {
-      reply: "Take a deep breath—you don't have any pending assignments scheduled right now. Take some time to rest and recharge!",
+      reply: "Take a deep breath—having a packed week is really tough, but you don't have to tackle it all at once. Take it one step at a time.",
       source: 'rule-based',
-      suggestionChips: ['Add a task', 'Paste my deadlines'],
+      suggestionChips: ['Make a small plan', 'Just talk'],
     };
   }
 
   // 2. Greetings
   if (/\b(hi|hello|hey|yo|howdy|greetings|good morning|good afternoon|good evening)\b/i.test(lower)) {
-    if (appFacts.totalActiveCount === 0) {
-      return {
-        reply: "Hey! You don't have any tasks scheduled right now. Add an assignment or paste deadlines to get started.",
-        source: 'rule-based',
-        suggestionChips: ['Add a task', 'Paste deadlines'],
-      };
-    }
-
-    if (appFacts.topTask) {
-      const todayStatus =
-        appFacts.today.deficitHours > 0
-          ? `You have ~${appFacts.today.demandHours}h planned against ${appFacts.today.capacityHours}h capacity today.`
-          : 'You look on track today.';
-
-      return {
-        reply: `Hey! Your top priority right now is ${appFacts.topTask.title}, ${appFacts.topTask.dueRelative.toLowerCase()}. ${todayStatus}`,
-        source: 'rule-based',
-        referencedTaskId: appFacts.topTask.id,
-        suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What should I do next?'],
-      };
-    }
-
     return {
-      reply: 'Hi! How can I help you triage your coursework today?',
+      reply: "Hey! What's up?",
       source: 'rule-based',
-      suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What should I do next?'],
     };
   }
 
   // 3. Thanks / Gratitude
   if (/\b(thanks|thank you|thx|appreciate it|thank u)\b/i.test(lower)) {
     return {
-      reply: "You're welcome! Let me know if you need to adjust anything else.",
+      reply: 'Anytime.',
       source: 'rule-based',
-      suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight'],
     };
   }
 
-  // 4. Affirmations
+  // 4. Casual affirmations (e.g. "ok", "got it", "cool")
   if (/^((ok|okay|cool|sounds good|got it|great|perfect|awesome|bet|nice)\b[\s.!]*)+$/i.test(lower)) {
     return {
-      reply: "Sounds good! I'm here whenever you want to check your deadlines or study hours.",
+      reply: 'Sounds good!',
       source: 'rule-based',
-      suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight'],
     };
   }
 
   // 5. Capabilities / Help / What can you do
   if (/\b(help|what can you do|how do you work|how does this work|features|commands)\b/i.test(lower)) {
-    const topTitle = appFacts.topTask ? `"${appFacts.topTask.title}"` : 'None';
     return {
-      reply: `I help you triage your deadlines and plan realistic study hours without guilt. Right now you have ${appFacts.totalActiveCount} active assignments (~${appFacts.totalActiveHours}h total effort), with ${topTitle} as your top recommendation. You can ask me what to do next, update your focus hours, or simulate delaying a deadline.`,
+      reply: 'I help you triage deadlines, plan realistic study hours, and test schedule changes without guilt. What would you like to check?',
       source: 'rule-based',
-      referencedTaskId: appFacts.topTask?.id,
-      suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What if I delay this task?'],
+      suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight'],
     };
   }
 
@@ -589,6 +721,35 @@ export function groundToolCall(
   fallbackReason?: FallbackReason
 ): GroundedAnswer {
   switch (toolName) {
+    case 'offer_start_task': {
+      const resolution = resolveTaskRef(args.taskRef, context);
+      const targetTask = resolution.task;
+      if (!targetTask) {
+        return {
+          reply: modelReply || "You don't have any active assignments scheduled right now.",
+          source,
+          fallbackReason,
+        };
+      }
+
+      const canOffer = shouldOfferStart(
+        {
+          offeredTaskIds: context.offeredTaskIds,
+          history: context.history,
+          targetTaskId: targetTask.id,
+        },
+        'what to do next'
+      );
+
+      return {
+        reply: modelReply || `Your top priority right now is "${targetTask.title}" (${targetTask.course}).`,
+        source,
+        fallbackReason,
+        referencedTaskId: targetTask.id,
+        pendingOffer: canOffer ? { kind: 'start_task', taskId: targetTask.id } : undefined,
+      };
+    }
+
     case 'explain_task': {
       const resolution = resolveTaskRef(args.taskRef, context);
       if (resolution.isAmbiguous && resolution.candidates) {
@@ -609,7 +770,6 @@ export function groundToolCall(
           reply: "You don't have any active assignments scheduled right now.",
           source,
           fallbackReason,
-          suggestionChips: ['Add a task', 'Paste deadlines'],
         };
       }
 
@@ -626,20 +786,31 @@ export function groundToolCall(
       const hoursDiff = Math.round((new Date(targetTask.dueDateTime).getTime() - context.now.getTime()) / 3600000);
       const dueStr = formatRelativeTime(hoursDiff);
 
-      // Client verifies plain language explanation grounded in facts
-      const verifiedReply = `"${targetTask.title}" (${targetTask.course}) is prioritized because it requires ~${remEffort}h of effort ${dueStr.toLowerCase()}.`;
+      const targetTaskLogged =
+        (facts.topTask?.id === targetTask.id
+          ? facts.topTask.loggedHours
+          : facts.tasksDue48h.find((t) => t.id === targetTask.id)?.loggedHours) ?? 0;
+      const loggedNotice = targetTaskLogged > 0 ? ` (${targetTaskLogged}h spent so far)` : '';
+
+      // Client verifies plain language explanation grounded in facts (no "want to get started?" text)
+      const verifiedReply = `"${targetTask.title}" (${targetTask.course}) is prioritized because it requires ~${remEffort}h of effort ${dueStr.toLowerCase()}.${loggedNotice}`;
+
+      const canOffer = shouldOfferStart(
+        {
+          offeredTaskIds: context.offeredTaskIds,
+          history: context.history,
+          targetTaskId: targetTask.id,
+        },
+        'what to do next'
+      );
 
       return {
-        reply: modelReply && !modelReply.includes('NaN') ? modelReply : verifiedReply,
+        reply: modelReply && !modelReply.includes('NaN') && modelReply.length > 5 ? modelReply : verifiedReply,
         reasoning: scoreAnalysis.explanation,
         source,
         fallbackReason,
         referencedTaskId: targetTask.id,
-        suggestionChips: [
-          `What if I move ${targetTask.title} by 1 day?`,
-          `What if I skip ${targetTask.title}?`,
-          'I only have 2 hours tonight',
-        ],
+        pendingOffer: canOffer ? { kind: 'start_task', taskId: targetTask.id } : undefined,
       };
     }
 
@@ -683,7 +854,6 @@ export function groundToolCall(
         source,
         fallbackReason,
         confirmation,
-        suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight'],
       };
     }
 
@@ -713,7 +883,6 @@ export function groundToolCall(
         source,
         fallbackReason,
         confirmation,
-        suggestionChips: ['Why is this my top task?', 'What if I delay a task?'],
       };
     }
 
@@ -737,7 +906,6 @@ export function groundToolCall(
           reply: 'You have no incomplete tasks to skip.',
           source,
           fallbackReason,
-          suggestionChips: ['Add a task', 'Check my schedule'],
         };
       }
 
@@ -760,7 +928,6 @@ export function groundToolCall(
         fallbackReason,
         confirmation,
         referencedTaskId: targetTask.id,
-        suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight'],
       };
     }
 
@@ -784,7 +951,6 @@ export function groundToolCall(
           reply: 'You have no incomplete tasks to move.',
           source,
           fallbackReason,
-          suggestionChips: ['Add a task'],
         };
       }
 
@@ -822,7 +988,6 @@ export function groundToolCall(
         fallbackReason,
         confirmation,
         referencedTaskId: targetTask.id,
-        suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight'],
       };
     }
 
@@ -831,7 +996,6 @@ export function groundToolCall(
         reply: modelReply || `You have ${facts.totalActiveCount} active assignments requiring ~${facts.totalActiveHours} total study hours.`,
         source,
         fallbackReason,
-        suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What should I do next?'],
       };
     }
   }
@@ -848,7 +1012,13 @@ export function groundIntent(
   source: 'gemini' | 'rule-based',
   fallbackReason?: FallbackReason
 ): GroundedAnswer {
-  const facts = buildAppFacts(context.tasks, context.capacitySettings, context.now, context.remainingEffortMap);
+  const facts = buildAppFacts(
+    context.tasks,
+    context.capacitySettings,
+    context.now,
+    context.remainingEffortMap,
+    context.stopwatchSessions
+  );
 
   switch (intent) {
     case 'chat': {
@@ -856,7 +1026,6 @@ export function groundIntent(
         reply: rawReply || 'How can I help you manage your coursework today?',
         source,
         fallbackReason,
-        suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What if I delay my next deadline?'],
       };
     }
 
@@ -873,23 +1042,63 @@ export function groundIntent(
     }
 
     case 'explain_ranking': {
-      return groundToolCall('explain_task', { taskRef: parameters?.taskId || parameters?.taskTitle }, rawReply, context, source, facts, fallbackReason);
+      return groundToolCall(
+        'explain_task',
+        { taskRef: parameters?.taskId || parameters?.taskTitle },
+        rawReply,
+        context,
+        source,
+        facts,
+        fallbackReason
+      );
     }
 
     case 'set_today_capacity': {
-      return groundToolCall('propose_set_capacity', { day: parameters?.dayKey, hours: parameters?.hours }, rawReply, context, source, facts, fallbackReason);
+      return groundToolCall(
+        'propose_set_capacity',
+        { day: parameters?.dayKey, hours: parameters?.hours },
+        rawReply,
+        context,
+        source,
+        facts,
+        fallbackReason
+      );
     }
 
     case 'what_if_skip': {
-      return groundToolCall('propose_drop_task', { taskRef: parameters?.taskId }, rawReply, context, source, facts, fallbackReason);
+      return groundToolCall(
+        'propose_drop_task',
+        { taskRef: parameters?.taskId },
+        rawReply,
+        context,
+        source,
+        facts,
+        fallbackReason
+      );
     }
 
     case 'what_if_move': {
-      return groundToolCall('propose_move_task', { taskRef: parameters?.taskId, days: parameters?.days }, rawReply, context, source, facts, fallbackReason);
+      return groundToolCall(
+        'propose_move_task',
+        { taskRef: parameters?.taskId, days: parameters?.days },
+        rawReply,
+        context,
+        source,
+        facts,
+        fallbackReason
+      );
     }
 
     case 'add_task': {
-      return groundToolCall('propose_add_task', parameters, rawReply, context, source, facts, fallbackReason);
+      return groundToolCall(
+        'propose_add_task',
+        parameters,
+        rawReply,
+        context,
+        source,
+        facts,
+        fallbackReason
+      );
     }
 
     case 'unknown':
@@ -900,15 +1109,27 @@ export function groundIntent(
             "I'm focused on helping you triage your deadlines and manage your study schedule. Ask me about what to do next, adjusting your study hours, or testing what happens if you delay an assignment!",
           source,
           fallbackReason,
-          suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What if I delay this task?'],
         };
       }
+
+      // Check last assistant chips to prevent consecutive duplicate chips
+      let lastChips: string[] | undefined;
+      if (context.history) {
+        for (let i = context.history.length - 1; i >= 0; i--) {
+          if (context.history[i].role === 'assistant') {
+            lastChips = context.history[i].suggestionChips;
+            break;
+          }
+        }
+      }
+
+      const chips = sanitizeChips(['Why is this my top task?', 'I only have 2 hours tonight'], lastChips);
 
       return {
         reply: rawReply || "I didn't quite get that. Here are some things you can ask me:",
         source,
         fallbackReason,
-        suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What if I delay a deadline?'],
+        suggestionChips: chips,
       };
     }
   }
@@ -927,15 +1148,59 @@ export async function processAskQuery(
     return {
       reply: 'Please ask a question about your deadlines, study hours, or upcoming assignments.',
       source: 'rule-based',
-      suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What should I do next?'],
     };
+  }
+
+  // 0. Check previous assistant message for PendingOffer before anything else
+  let lastAssistant: AskMessageHistoryItem | undefined;
+  if (context.history && context.history.length > 0) {
+    for (let i = context.history.length - 1; i >= 0; i--) {
+      if (context.history[i].role === 'assistant') {
+        lastAssistant = context.history[i];
+        break;
+      }
+    }
+  }
+
+  // Affirmative check
+  if (isAffirmative(query)) {
+    if (lastAssistant?.pendingOffer && lastAssistant.pendingOffer.kind === 'start_task') {
+      const taskId = lastAssistant.pendingOffer.taskId;
+      const task = context.tasks.find((t) => t.id === taskId);
+      const title = task ? task.title : 'your task';
+      if (context.onStartTask) {
+        context.onStartTask(taskId);
+      }
+      return {
+        reply: `Started. The timer is running on ${title}. I'll stay out of your way.`,
+        source: 'rule-based',
+        cooldownTaskId: taskId,
+      };
+    }
+    // Affirmative with NO pending offer
+    return {
+      reply: 'Sure. What would you like to do?',
+      source: 'rule-based',
+    };
+  }
+
+  // Negative check
+  if (isNegative(query)) {
+    if (lastAssistant?.pendingOffer && lastAssistant.pendingOffer.kind === 'start_task') {
+      return {
+        reply: 'No problem.',
+        source: 'rule-based',
+        cooldownTaskId: lastAssistant.pendingOffer.taskId,
+      };
+    }
   }
 
   const facts = buildAppFacts(
     context.tasks,
     context.capacitySettings,
     context.now,
-    context.remainingEffortMap
+    context.remainingEffortMap,
+    context.stopwatchSessions
   );
 
   // 1. Check local small-talk and conversational queries FIRST (zero network latency)
@@ -944,32 +1209,55 @@ export async function processAskQuery(
     return localMatch;
   }
 
+  // 2. Relevance routing: determine if schedule-related
+  const isSchedule = isScheduleRelated(query, context.history, context.tasks);
+
   let serverData: any = null;
   let fetchFailed = false;
 
-  // 2. Attempt serverless API call with rich grounding facts
+  // 3. Attempt serverless API call with relevance-routed payload
   try {
-    const compactTasks = context.tasks.map((t) => ({
-      id: t.id,
-      title: t.title,
-      course: t.course,
-      dueDateTime: t.dueDateTime,
-      estimatedHours: t.estimatedHours,
-      priority: t.priority,
-      category: t.category,
-    }));
+    const compactTasks = isSchedule
+      ? context.tasks.map((t) => ({
+          id: t.id,
+          title: t.title,
+          course: t.course,
+          dueDateTime: t.dueDateTime,
+          estimatedHours: t.estimatedHours,
+          priority: t.priority,
+          category: t.category,
+          loggedHours:
+            facts.topTask?.id === t.id
+              ? facts.topTask.loggedHours
+              : (facts.tasksDue48h.find((f) => f.id === t.id)?.loggedHours ?? 0),
+        }))
+      : [];
+
+    const requestSnapshot = isSchedule
+      ? {
+          tasks: compactTasks,
+          now: context.now.toISOString(),
+          facts,
+          history: context.history?.slice(-8) || [],
+          isScheduleRelated: true,
+        }
+      : {
+          now: context.now.toISOString(),
+          facts: {
+            currentTime: facts.currentTime,
+            weekday: facts.weekday,
+            history: context.history?.slice(-8) || [],
+          },
+          history: context.history?.slice(-8) || [],
+          isScheduleRelated: false,
+        };
 
     const res = await fetch('/api/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message: query,
-        snapshot: {
-          tasks: compactTasks,
-          now: context.now.toISOString(),
-          facts,
-          history: context.history?.slice(-8) || [],
-        },
+        snapshot: requestSnapshot,
       }),
     });
 
@@ -983,7 +1271,7 @@ export async function processAskQuery(
     fetchFailed = true;
   }
 
-  // 3. If server responded with Gemini tool call or text, process it
+  // 4. If server responded with Gemini tool call or text, process it
   if (serverData && serverData.source === 'gemini' && !serverData.fallbackToLocal) {
     if (serverData.toolCall) {
       return groundToolCall(
@@ -995,16 +1283,29 @@ export async function processAskQuery(
         facts
       );
     }
+
     // Plain text reply from Gemini
+    const canOffer =
+      isSchedule &&
+      facts.topTask &&
+      shouldOfferStart(
+        {
+          offeredTaskIds: context.offeredTaskIds,
+          history: context.history,
+          targetTaskId: facts.topTask.id,
+        },
+        query
+      );
+
     return {
       reply: serverData.reply,
       source: 'gemini',
-      referencedTaskId: facts.topTask?.id,
-      suggestionChips: ['Why is this my top task?', 'I only have 2 hours tonight', 'What should I do next?'],
+      referencedTaskId: isSchedule ? facts.topTask?.id : undefined,
+      pendingOffer: canOffer && facts.topTask ? { kind: 'start_task', taskId: facts.topTask.id } : undefined,
     };
   }
 
-  // 4. Otherwise, use offline rule-based intent parsing
+  // 5. Otherwise, use offline rule-based intent parsing
   const offline = classifyOfflineQuery(query, context);
   const fallbackReason: FallbackReason =
     serverData?.fallbackReason || (fetchFailed ? 'server_error' : 'model_unavailable');

@@ -7,9 +7,17 @@ import {
   resolveTaskRef,
   processAskQuery,
   AskContextSnapshot,
+  isAffirmative,
+  isNegative,
+  shouldOfferStart,
+  isScheduleRelated,
+  sanitizeChips,
 } from '../askService';
 import { buildAppFacts } from '../facts';
 import { Task, CapacitySettings } from '../../types';
+
+declare const __dirname: string;
+declare const require: any;
 
 describe('Grounded Ask Assistant & Conversational Engine (Assistant v2)', () => {
   // Base anchor: Thursday Oct 22, 2026, 14:00 UTC
@@ -89,34 +97,33 @@ describe('Grounded Ask Assistant & Conversational Engine (Assistant v2)', () => 
   const facts = buildAppFacts(context.tasks, context.capacitySettings, context.now, context.remainingEffortMap);
 
   describe('1. Chat Fixtures: Small-Talk, Distress & Overwhelm', () => {
-    it('handles fixture "hi": welcomes student with grounded top task and today capacity', () => {
+    it('handles fixture "hi": welcomes student with short friendly greeting and no task data', () => {
       const greeting = checkLocalSmallTalk('hi', context, facts);
       expect(greeting).not.toBeNull();
-      expect(greeting?.reply).toContain('Operating Systems Lab 2');
-      expect(greeting?.referencedTaskId).toBe('task-lab-1');
-      expect(greeting?.suggestionChips?.length).toBeGreaterThan(0);
-      expect(greeting?.reply).not.toBe('');
+      expect(greeting?.reply).toBe("Hey! What's up?");
+      expect(greeting?.reply).not.toContain('Operating Systems Lab 2');
+      expect(greeting?.referencedTaskId).toBeUndefined();
+      expect(greeting?.suggestionChips).toBeUndefined();
     });
 
     it('handles fixture "thanks": provides warm, supportive acknowledgment', () => {
       const thanks = checkLocalSmallTalk('thanks', context, facts);
-      expect(thanks?.reply).toContain("You're welcome");
+      expect(thanks?.reply).toBe('Anytime.');
       expect(thanks?.source).toBe('rule-based');
+      expect(thanks?.suggestionChips).toBeUndefined();
     });
 
-    it('handles fixture "I\'m so overwhelmed": acknowledges kindly and offers a concrete 10-minute starter step', () => {
+    it('handles fixture "I\'m so overwhelmed": acknowledges kindly with empathy without pushing to open a task and offers 2 chips', () => {
       const res = checkLocalSmallTalk("I'm so overwhelmed with all my coursework", context, facts);
       expect(res).not.toBeNull();
       expect(res?.reply).toContain('Take a deep breath');
-      expect(res?.reply).toContain('Operating Systems Lab 2');
-      expect(res?.reply).toContain('10 minutes');
-      expect(res?.referencedTaskId).toBe('task-lab-1');
-      expect(res?.suggestionChips).toContain('Start Operating Systems Lab 2');
+      expect(res?.reply).not.toContain('Operating Systems Lab 2');
+      expect(res?.suggestionChips).toEqual(['Make a small plan', 'Just talk']);
     });
 
     it('handles affirmations ("ok", "cool", "sounds good")', () => {
       const ok = checkLocalSmallTalk('ok cool', context, facts);
-      expect(ok?.reply).toContain('Sounds good');
+      expect(ok?.reply).toBe('Sounds good!');
     });
   });
 
@@ -355,6 +362,219 @@ describe('Grounded Ask Assistant & Conversational Engine (Assistant v2)', () => 
       } finally {
         globalThis.fetch = originalFetch;
       }
+    });
+  });
+
+  describe('7. Phase 7: Conversational Assistant, Nudge Budget & Offer State', () => {
+    it('"yes" after a start offer starts the timer once and asks nothing', async () => {
+      let startedTaskId: string | null = null;
+      const contextWithOffer: AskContextSnapshot = {
+        ...context,
+        history: [
+          { role: 'user', text: 'what should I do first?' },
+          {
+            role: 'assistant',
+            text: 'Your top priority is Operating Systems Lab 2.',
+            pendingOffer: { kind: 'start_task', taskId: 'task-lab-1' },
+          },
+        ],
+        onStartTask: (id) => {
+          startedTaskId = id;
+        },
+      };
+
+      const result = await processAskQuery('yes', contextWithOffer);
+      expect(startedTaskId).toBe('task-lab-1');
+      expect(result.reply).toBe(
+        "Started. The timer is running on Operating Systems Lab 2. I'll stay out of your way."
+      );
+      expect(result.reply).not.toContain('?');
+      expect(result.suggestionChips).toBeUndefined();
+    });
+
+    it('"yes" twice in a row does not re-offer', async () => {
+      let startedCount = 0;
+      const contextAfterStart: AskContextSnapshot = {
+        ...context,
+        history: [
+          { role: 'user', text: 'yes' },
+          {
+            role: 'assistant',
+            text: "Started. The timer is running on Operating Systems Lab 2. I'll stay out of your way.",
+          },
+        ],
+        onStartTask: () => {
+          startedCount++;
+        },
+      };
+
+      const result = await processAskQuery('yes', contextAfterStart);
+      expect(startedCount).toBe(0);
+      expect(result.reply).toBe('Sure. What would you like to do?');
+      expect(result.pendingOffer).toBeUndefined();
+      expect(result.suggestionChips).toBeUndefined();
+      expect(result.reply).not.toContain('Operating Systems');
+    });
+
+    it('"no" prevents re-offering for the session', async () => {
+      const contextWithOffer: AskContextSnapshot = {
+        ...context,
+        history: [
+          { role: 'user', text: 'what should I do first?' },
+          {
+            role: 'assistant',
+            text: 'Your top priority is Operating Systems Lab 2.',
+            pendingOffer: { kind: 'start_task', taskId: 'task-lab-1' },
+          },
+        ],
+      };
+
+      const result = await processAskQuery('no', contextWithOffer);
+      expect(result.reply).toBe('No problem.');
+      expect(result.cooldownTaskId).toBe('task-lab-1');
+
+      // Subsequent check for shouldOfferStart
+      const canOfferAgain = shouldOfferStart(
+        {
+          offeredTaskIds: [result.cooldownTaskId!],
+          targetTaskId: 'task-lab-1',
+        },
+        'what should I do next?'
+      );
+      expect(canOfferAgain).toBe(false);
+    });
+
+    it('"hi" returns no task data', async () => {
+      const result = await processAskQuery('hi', context);
+      expect(result.reply).toBe("Hey! What's up?");
+      expect(result.reply).not.toContain('Operating Systems');
+      expect(result.reply).not.toContain('due');
+      expect(result.reply).not.toContain('hours');
+      expect(result.referencedTaskId).toBeUndefined();
+      expect(result.suggestionChips).toBeUndefined();
+    });
+
+    it('a non-schedule question omits task facts from the request payload', async () => {
+      let capturedPayload: any = null;
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (async (_url: string, init: any) => {
+        capturedPayload = JSON.parse(init.body);
+        return {
+          ok: true,
+          json: async () => ({
+            source: 'gemini',
+            reply: 'Normalization organizes columns to reduce data redundancy.',
+          }),
+        };
+      }) as any;
+
+      try {
+        const result = await processAskQuery('how do I revise normalization?', context);
+        expect(result.reply).toContain('Normalization');
+        expect(capturedPayload).not.toBeNull();
+        expect(capturedPayload.snapshot.isScheduleRelated).toBe(false);
+        expect(capturedPayload.snapshot.tasks).toBeUndefined();
+        expect(capturedPayload.snapshot.facts.topTask).toBeUndefined();
+        expect(capturedPayload.snapshot.facts.currentTime).toBeTruthy();
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
+    it('chips never repeat in consecutive messages', () => {
+      const previousChips = ['Why is this my top task?', 'I only have 2 hours tonight'];
+      const repeated = sanitizeChips(['Why is this my top task?', 'I only have 2 hours tonight'], previousChips);
+      expect(repeated).toBeUndefined();
+
+      const different = sanitizeChips(['What if I delay a task?'], previousChips);
+      expect(different).toEqual(['What if I delay a task?']);
+
+      const clamped = sanitizeChips(['a', 'b', 'c', 'd']);
+      expect(clamped).toEqual(['a', 'b', 'c']);
+    });
+
+    it('shouldOfferStart handles various cases properly', () => {
+      // 1. Priorities query with no prior offers -> allowed
+      expect(
+        shouldOfferStart(
+          { offeredTaskIds: [], targetTaskId: 'task-lab-1' },
+          'what should I do next?'
+        )
+      ).toBe(true);
+
+      // 2. Query about hours -> allowed
+      expect(
+        shouldOfferStart(
+          { offeredTaskIds: [], targetTaskId: 'task-lab-1' },
+          'I only have 2 hours tonight'
+        )
+      ).toBe(true);
+
+      // 3. Consecutive reply with previous offer -> disallowed
+      expect(
+        shouldOfferStart(
+          { lastReplyHadOffer: true, offeredTaskIds: [], targetTaskId: 'task-lab-1' },
+          'what should I do next?'
+        )
+      ).toBe(false);
+
+      // 4. Task already offered this session -> disallowed
+      expect(
+        shouldOfferStart(
+          { offeredTaskIds: ['task-lab-1'], targetTaskId: 'task-lab-1' },
+          'what should I do next?'
+        )
+      ).toBe(false);
+
+      // 5. Query unrelated to priorities, next, or time -> disallowed
+      expect(
+        shouldOfferStart(
+          { offeredTaskIds: [], targetTaskId: 'task-lab-1' },
+          'how do I revise normalization?'
+        )
+      ).toBe(false);
+
+      // 6. Greeting query -> disallowed
+      expect(
+        shouldOfferStart(
+          { offeredTaskIds: [], targetTaskId: 'task-lab-1' },
+          'hi'
+        )
+      ).toBe(false);
+    });
+
+    it('validates isAffirmative and isNegative helper functions', () => {
+      expect(isAffirmative('yes')).toBe(true);
+      expect(isAffirmative('yeah')).toBe(true);
+      expect(isAffirmative('yep')).toBe(true);
+      expect(isAffirmative('sure')).toBe(true);
+      expect(isAffirmative('ok do it')).toBe(true);
+      expect(isAffirmative('no')).toBe(false);
+
+      expect(isNegative('no')).toBe(true);
+      expect(isNegative('nah')).toBe(true);
+      expect(isNegative('not now')).toBe(true);
+      expect(isNegative('later')).toBe(true);
+      expect(isNegative('yes')).toBe(false);
+    });
+
+    it('isScheduleRelated classifies correctly', () => {
+      expect(isScheduleRelated('how do I revise normalization?')).toBe(false);
+      expect(isScheduleRelated('how do I revise DBMS normalization quickly?')).toBe(false);
+      expect(isScheduleRelated('what is quicksort?')).toBe(false);
+      expect(isScheduleRelated('hi')).toBe(false);
+      expect(isScheduleRelated('what should I do first?')).toBe(true);
+      expect(isScheduleRelated('when is my lab due?')).toBe(true);
+      expect(isScheduleRelated('I have 2 hours tonight')).toBe(true);
+    });
+
+    it('the typing indicator contains no deadline text', () => {
+      const fs = require('fs');
+      const path = require('path');
+      const askModalPath = path.resolve(__dirname, '../../components/AskModal.tsx');
+      const content = fs.readFileSync(askModalPath, 'utf8');
+      expect(content).not.toContain('Checking your deadlines and study hours...');
+      expect(content).toContain('aria-label="Rescue is typing"');
     });
   });
 });

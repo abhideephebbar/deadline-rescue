@@ -69,5 +69,24 @@ describe('buildAppFacts', () => {
     expect(facts.catchUpCount).toBe(0);
     expect(facts.today.isOnTrack).toBe(true);
   });
+
+  it('includes loggedHours per task from saved stopwatch sessions', () => {
+    const sessions = [
+      {
+        id: 'session-1',
+        taskId: 'task-1',
+        durationMs: 1.5 * 3600 * 1000,
+        durationFormatted: '01:30:00',
+        createdAt: baseNow.toISOString(),
+      },
+    ];
+
+    const facts = buildAppFacts(sampleTasks, defaultCapacity, baseNow, {}, sessions);
+
+    expect(facts.topTask?.loggedHours).toBe(1.5);
+    expect(facts.tasksDue48h.find((t) => t.id === 'task-1')?.loggedHours).toBe(1.5);
+    expect(facts.tasksDue48h.find((t) => t.id === 'task-2')?.loggedHours).toBe(0);
+    expect(facts.totalLoggedHours).toBe(1.5);
+  });
 });
 

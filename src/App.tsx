@@ -267,8 +267,8 @@ export function App() {
   }, [stopwatch.selectedTaskId, displayTasks, topRecommendation]);
 
   const appFacts = useMemo(
-    () => buildAppFacts(displayTasks, capacitySettings, currentTime, remainingEffortMap),
-    [displayTasks, capacitySettings, currentTime, remainingEffortMap]
+    () => buildAppFacts(displayTasks, capacitySettings, currentTime, remainingEffortMap, stopwatch.savedSessions),
+    [displayTasks, capacitySettings, currentTime, remainingEffortMap, stopwatch.savedSessions]
   );
 
   const handleGreetingAction = (action: GreetingActionType, taskId?: string) => {
@@ -663,12 +663,19 @@ export function App() {
             remainingEffortMap={remainingEffortMap}
             capacitySettings={capacitySettings}
             now={currentTime}
+            stopwatchSessions={stopwatch.savedSessions}
             onAddTask={(newTask) => addTask(newTask)}
             onUpdateDailyHours={(day, hours) => updateDailyHours(day, hours)}
             onDropTask={(taskId) => updateTask(taskId, { completed: true, dropped: true })}
             onRescheduleTask={(taskId, newDueDateIso) =>
               updateTask(taskId, { dueDateTime: newDueDateIso })
             }
+            onStartTask={(taskId) => {
+              const target = displayTasks.find((t) => t.id === taskId);
+              if (target) {
+                handleStartNow(target);
+              }
+            }}
           />
         </div>
       </LazyMotion>

@@ -72,3 +72,4 @@ To test the serverless API routes locally on your computer:
 ## 5. Offline Fallback
 
 If no API key is provided, Deadline Rescue continues to work 100% privately using its built-in rule-based offline triage engine.
+

@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Send, X, ShieldCheck, Check, AlertCircle } from 'lucide-react';
-import { Task, CapacitySettings } from '../types';
+import { Sparkles, Send, X, ShieldCheck, Check, AlertCircle, Play } from 'lucide-react';
+import { Task, CapacitySettings, StopwatchSession } from '../types';
 import {
   processAskQuery,
   GroundedConfirmation,
   AskMessageHistoryItem,
   FallbackReason,
+  PendingOffer,
 } from '../utils/askService';
 import { Modal } from './ui/Modal';
 
@@ -21,6 +22,7 @@ export interface ChatMessage {
   reasoning?: string;
   suggestionChips?: string[];
   referencedTaskId?: string;
+  pendingOffer?: PendingOffer;
 }
 
 interface AskModalProps {
@@ -30,10 +32,12 @@ interface AskModalProps {
   remainingEffortMap?: Record<string, number>;
   capacitySettings: CapacitySettings;
   now?: Date;
+  stopwatchSessions?: StopwatchSession[];
   onAddTask: (data: any) => void;
   onUpdateDailyHours: (day: any, hours: number) => void;
   onDropTask: (taskId: string) => void;
   onRescheduleTask: (taskId: string, newDueDateIso: string) => void;
+  onStartTask: (taskId: string) => void;
 }
 
 export const AskModal: React.FC<AskModalProps> = ({
@@ -43,10 +47,12 @@ export const AskModal: React.FC<AskModalProps> = ({
   remainingEffortMap,
   capacitySettings,
   now = new Date(),
+  stopwatchSessions,
   onAddTask,
   onUpdateDailyHours,
   onDropTask,
   onRescheduleTask,
+  onStartTask,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
@@ -57,13 +63,13 @@ export const AskModal: React.FC<AskModalProps> = ({
       suggestionChips: [
         'Why is this my top task?',
         'I only have 2 hours tonight',
-        'What if I skip my lowest priority item?',
-        'What if I move my next task by 1 day?',
+        'What if I delay a task?',
       ],
     },
   ]);
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [offeredTaskIds, setOfferedTaskIds] = useState<string[]>([]);
   const [healthStatus, setHealthStatus] = useState<string | null>(null);
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -109,9 +115,36 @@ export const AskModal: React.FC<AskModalProps> = ({
     }
   }, [messages.length, isLoading, isOpen]);
 
+  const handleAcceptOffer = (taskId: string, messageId?: string) => {
+    const task = tasks.find((t) => t.id === taskId);
+    const title = task ? task.title : 'your task';
+    onStartTask(taskId);
+    setOfferedTaskIds((prev) => Array.from(new Set([...prev, taskId])));
+
+    setMessages((prev) => {
+      const updated = prev.map((m) =>
+        messageId && m.id === messageId ? { ...m, pendingOffer: undefined } : m
+      );
+      return [
+        ...updated,
+        {
+          id: 'asst-' + Date.now(),
+          role: 'assistant',
+          text: `Started. The timer is running on ${title}. I'll stay out of your way.`,
+          source: 'rule-based',
+        },
+      ];
+    });
+  };
+
   const handleSend = async (textToSend: string) => {
     const text = textToSend.trim();
     if (!text || isLoading) return;
+
+    // Clear pendingOffer from previous messages since user took a turn
+    const cleanedPrevious = messages.map((m) =>
+      m.pendingOffer ? { ...m, pendingOffer: undefined } : m
+    );
 
     const userMsg: ChatMessage = {
       id: 'msg-' + Date.now(),
@@ -119,7 +152,7 @@ export const AskModal: React.FC<AskModalProps> = ({
       text,
     };
 
-    const nextMessages = [...messages, userMsg];
+    const nextMessages = [...cleanedPrevious, userMsg];
     setMessages(nextMessages);
     setQuery('');
     setIsLoading(true);
@@ -129,6 +162,8 @@ export const AskModal: React.FC<AskModalProps> = ({
         role: m.role,
         text: m.text,
         taskId: m.referencedTaskId,
+        pendingOffer: m.pendingOffer,
+        suggestionChips: m.suggestionChips,
       }));
 
       const answer = await processAskQuery(text, {
@@ -137,7 +172,17 @@ export const AskModal: React.FC<AskModalProps> = ({
         capacitySettings,
         now,
         history,
+        offeredTaskIds,
+        onStartTask,
+        stopwatchSessions,
       });
+
+      if (answer.cooldownTaskId) {
+        setOfferedTaskIds((prev) => Array.from(new Set([...prev, answer.cooldownTaskId!])));
+      }
+      if (answer.pendingOffer) {
+        setOfferedTaskIds((prev) => Array.from(new Set([...prev, answer.pendingOffer!.taskId])));
+      }
 
       const assistantMsg: ChatMessage = {
         id: 'asst-' + Date.now(),
@@ -150,6 +195,7 @@ export const AskModal: React.FC<AskModalProps> = ({
         reasoning: answer.reasoning,
         suggestionChips: answer.suggestionChips,
         referencedTaskId: answer.referencedTaskId,
+        pendingOffer: answer.pendingOffer,
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
@@ -396,6 +442,20 @@ export const AskModal: React.FC<AskModalProps> = ({
                     </div>
                   )}
 
+                  {/* Pending Offer "Start timer" button */}
+                  {msg.pendingOffer && msg.pendingOffer.kind === 'start_task' && (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleAcceptOffer(msg.pendingOffer!.taskId, msg.id)}
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-400 text-black text-xs font-semibold transition-colors cursor-pointer active:scale-95 shadow-sm"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-black" />
+                        <span>Start timer</span>
+                      </button>
+                    </div>
+                  )}
+
                   {/* Suggestion Chips */}
                   {msg.suggestionChips && msg.suggestionChips.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
@@ -403,7 +463,16 @@ export const AskModal: React.FC<AskModalProps> = ({
                         <button
                           key={idx}
                           type="button"
-                          onClick={() => handleSend(chip)}
+                          onClick={() => {
+                            if (chip === 'Start timer') {
+                              const targetId = msg.pendingOffer?.taskId || msg.referencedTaskId || tasks[0]?.id;
+                              if (targetId) {
+                                handleAcceptOffer(targetId, msg.id);
+                                return;
+                              }
+                            }
+                            handleSend(chip);
+                          }}
                           className="px-2.5 py-1 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-zinc-300 hover:text-white transition-colors cursor-pointer text-left"
                         >
                           {chip}
@@ -416,12 +485,14 @@ export const AskModal: React.FC<AskModalProps> = ({
             </div>
           ))}
 
-          {/* Typing Indicator */}
+          {/* Typing Indicator: three softly animated dots with no text */}
           {isLoading && (
-            <div className="flex justify-start">
-              <div className="max-w-[85%] rounded-2xl rounded-tl-xs p-3.5 bg-[#1d1d21] border border-white/10 text-zinc-400 text-xs flex items-center space-x-2 animate-pulse">
-                <Sparkles className="w-3.5 h-3.5 text-orange-400 animate-spin shrink-0" />
-                <span>Checking your deadlines and study hours...</span>
+            <div className="flex justify-start" role="status" aria-label="Rescue is typing">
+              <div className="rounded-2xl rounded-tl-xs px-4 py-3 bg-[#1d1d21] border border-white/10 flex items-center space-x-1.5">
+                <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce motion-reduce:animate-none [animation-delay:-0.3s]" />
+                <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce motion-reduce:animate-none [animation-delay:-0.15s]" />
+                <span className="w-2 h-2 rounded-full bg-zinc-400 animate-bounce motion-reduce:animate-none" />
+                <span className="sr-only">Rescue is typing</span>
               </div>
             </div>
           )}
