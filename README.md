@@ -159,11 +159,20 @@ npm test
    - **Distress & Overwhelm Empathy**: Kind, non-lecture response to overwhelmed students, breaking panic into a single concrete 10-minute starter micro-step.
    - **Privacy First**: To answer, task titles and dates are sent to the secure Gemini API endpoint when online. Data is processed in-memory for the active session only and never stored remotely. Offline fallback runs 100% in-browser with zero remote requests.
 
-11. **Local Welcome Greeting Banner**:
-   - Dismissible card rendered at the top of the main dashboard, evaluated 100% locally with zero API calls.
-   - **First Visit Ever**: Shows a warm welcome intro with quick action chips (*"Paste my deadlines"*, *"Add a task"*, *"Show me around"*).
-   - **Returning Daily Visit**: Greets the student by time of day (*"Good morning!"*, *"Good afternoon!"*), displays a concrete schedule update from real facts (e.g. upcoming deadlines, overdue alerts, or today's study capacity balance), and provides actionable chips (*"Start <top task>"*, *"Plan my week"*, *"I'm swamped"*).
-   - **Same-Day Dismissal Memory**: Once dismissed, remembers dismissal for the rest of the day in localStorage and softly animates out. Respects `prefers-reduced-motion`.
+11. **Claude-Style Greeting Hero & Opt-In Weather**:
+   - **Living Home Screen Greeting**: Prominently sits at the top of the Today view with bold condensed display typography (`Bebas Neue`, `clamp(40px, 7vw, 76px)`), a supportive real-facts subline, and quick action chips.
+   - **First Name Personalization**: Students can provide their first name stored locally under `deadline_rescue_name` (or choose "Skip"). Stays 100% on-device and is never sent to any remote API. Editable anytime via "Change name" in the settings menu.
+   - **Time-of-Day & Day Overlays**: 6 distinct time buckets (late night 00–04, early morning 05–08, morning 09–11, afternoon 12–16, evening 17–20, night 21–23) with 6+ warm conversational headlines each. Gentle late night headlines encourage healthy rest. Special day overlays activate on Mondays, Fridays, and Sunday evenings.
+   - **Motion Staggered Entrance**: Animated word-by-word reveal (each word rises 12px with 60ms stagger), followed by the subline at 250ms and chips. Cross-fades cleanly between greetings (`AnimatePresence mode="wait"`).
+   - **Subtle Atmospheric Idle Motion**: Contextual Lucide icon beside the headline (sun, moon, cloud, rain, snow, fog, lightning) with gentle idle motion (slow rotation for sun, gentle drift for clouds). Automatically pauses when "Reduce effects" is active or `prefers-reduced-motion` is set.
+   - **30-Minute Re-roll Rule**: Chooses a new greeting on initial page load and when the tab becomes visible again after 30 or more minutes away (`visibilitychange`). Never repeats the immediate `lastShownId`.
+   - **Opt-In Weather Integration & Privacy**:
+     - Optional "Use my weather" button queries `navigator.geolocation.getCurrentPosition`.
+     - **Privacy Fuzzing**: Coordinates are rounded to 1 decimal place (~11 km radius) before storage or network calls.
+     - Fetches current weather from Open-Meteo with a 3-second timeout and 45-minute local cache.
+     - **Weather Privacy Guarantee**: Weather lookups send rounded coordinates to Open-Meteo only if you turn weather on. You can turn weather off anytime from the settings menu.
+     - **Attribution & Non-Commercial Notice**: Weather data provided by [Open-Meteo.com](https://open-meteo.com/). Open-Meteo's free API is meant for non-commercial use and requires attribution.
+   - **Atmospheric Aurora Tint**: Gentle time-of-day gradient tint in the background (cooler deep indigo at night, warm dawn amber in morning) that harmonizes with the workload mood without overpowering it.
 
 11. **Task Management & Form Validation**:
    - Add and edit assignments with title, course code (e.g., `CS 350`), category (assignment, lab, exam, quiz, etc.), due date & time, estimated effort (hours), priority, and notes.

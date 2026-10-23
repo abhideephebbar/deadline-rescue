@@ -12,6 +12,8 @@ import {
   MoreHorizontal,
   Flame,
   Check,
+  User,
+  CloudOff,
 } from 'lucide-react';
 
 export type ActiveTab = 'today' | 'week' | 'tasks';
@@ -29,6 +31,9 @@ interface FloatingNavProps {
   reduceEffects: boolean;
   onToggleReduceEffects: () => void;
   onOpenAddTask: () => void;
+  onChangeName?: () => void;
+  onTurnOffWeather?: () => void;
+  isWeatherActive?: boolean;
 }
 
 export const FloatingNav: React.FC<FloatingNavProps> = ({
@@ -44,6 +49,9 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
   reduceEffects,
   onToggleReduceEffects,
   onOpenAddTask,
+  onChangeName,
+  onTurnOffWeather,
+  isWeatherActive = false,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -218,6 +226,32 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
                         <span>Load demo tasks</span>
                       </button>
 
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          onChangeName?.();
+                        }}
+                        className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors cursor-pointer"
+                      >
+                        <User className="w-4 h-4 text-zinc-400 shrink-0" />
+                        <span>Change name</span>
+                      </button>
+
+                      {isWeatherActive && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            onTurnOffWeather?.();
+                          }}
+                          className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors cursor-pointer"
+                        >
+                          <CloudOff className="w-4 h-4 text-zinc-400 shrink-0" />
+                          <span>Turn off weather</span>
+                        </button>
+                      )}
+
                       <div className="my-1 border-t border-white/10" />
 
                       <button
@@ -231,6 +265,10 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
                         <Trash2 className="w-4 h-4 shrink-0" />
                         <span>Clear all data</span>
                       </button>
+
+                      <div className="pt-1.5 pb-0.5 px-3 border-t border-white/5 text-[10px] text-zinc-500 select-none">
+                        Weather data by Open-Meteo.com
+                      </div>
                     </m.div>
                   )}
                 </AnimatePresence>
@@ -358,6 +396,32 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
                       <span>Demo tasks</span>
                     </button>
 
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        onChangeName?.();
+                      }}
+                      className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
+                    >
+                      <User className="w-4 h-4 text-zinc-400 shrink-0" />
+                      <span>Change name</span>
+                    </button>
+
+                    {isWeatherActive && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          onTurnOffWeather?.();
+                        }}
+                        className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl hover:bg-white/10 text-left transition-colors"
+                      >
+                        <CloudOff className="w-4 h-4 text-zinc-400 shrink-0" />
+                        <span>Turn off weather</span>
+                      </button>
+                    )}
+
                     <div className="my-1 border-t border-white/10" />
 
                     <button
@@ -371,6 +435,10 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
                       <Trash2 className="w-4 h-4 shrink-0" />
                       <span>Clear all data</span>
                     </button>
+
+                    <div className="pt-1.5 pb-0.5 px-3 border-t border-white/5 text-[10px] text-zinc-500 select-none">
+                      Weather data by Open-Meteo.com
+                    </div>
                   </m.div>
                 )}
               </AnimatePresence>

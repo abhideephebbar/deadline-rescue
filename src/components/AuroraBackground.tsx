@@ -4,11 +4,13 @@ import { WorkloadMood } from '../utils/mood';
 interface AuroraBackgroundProps {
   mood: WorkloadMood;
   reduceEffects?: boolean;
+  now?: Date;
 }
 
 export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
   mood,
   reduceEffects = false,
+  now = new Date(),
 }) => {
   const [isTabHidden, setIsTabHidden] = useState(false);
 
@@ -102,7 +104,31 @@ export const AuroraBackground: React.FC<AuroraBackgroundProps> = ({
         />
       </div>
 
-      {/* 4. Film Grain Overlay (Tiny SVG noise data URI with ~0.04 opacity) */}
+      {/* 4. Time-of-day subtle atmospheric tint (cooler at night, warmer in morning) */}
+      <div
+        className="absolute inset-0 pointer-events-none transition-opacity duration-1000"
+        style={{
+          background: (() => {
+            const hour = now.getHours();
+            if (hour >= 21 || hour < 5) {
+              // Night / late night: cool deep indigo
+              return 'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(30, 27, 75, 0.35), transparent 70%)';
+            }
+            if (hour >= 5 && hour < 12) {
+              // Early morning / morning: warm dawn amber
+              return 'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(245, 158, 11, 0.16), transparent 70%)';
+            }
+            if (hour >= 12 && hour < 17) {
+              // Afternoon: gentle sky daylight
+              return 'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(56, 189, 248, 0.10), transparent 70%)';
+            }
+            // Evening: sunset rose
+            return 'radial-gradient(ellipse 80% 60% at 50% -10%, rgba(244, 63, 94, 0.16), transparent 70%)';
+          })(),
+        }}
+      />
+
+      {/* 5. Film Grain Overlay (Tiny SVG noise data URI with ~0.04 opacity) */}
       <div
         className="absolute inset-0 opacity-[0.04] mix-blend-screen pointer-events-none"
         style={{

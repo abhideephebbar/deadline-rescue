@@ -7,7 +7,7 @@ import { TaskRail } from './components/TaskRail';
 import { WeekForecastView } from './components/WeekForecastView';
 import { AllTasksView } from './components/AllTasksView';
 import { EmptyState } from './components/EmptyState';
-import { WelcomeGreeting } from './components/WelcomeGreeting';
+import { GreetingHero } from './components/GreetingHero';
 import { MiniTimerBar } from './components/MiniTimerBar';
 import { DemoTaskBanner } from './components/DemoTaskBanner';
 import { TaskFormModal } from './components/TaskFormModal';
@@ -32,6 +32,7 @@ import { GreetingActionType } from './utils/greeting';
 import { getWorkloadMood } from './utils/mood';
 import { isSampleTaskSet, isSampleBannerDismissed, dismissSampleBanner } from './utils/sampleDetection';
 import { generateTourDemoTasks } from './utils/tour';
+import { clearStoredWeather, getStoredWeatherOptIn, setStoredWeatherOptIn } from './utils/weather';
 import { Task, Priority, TaskCategory } from './types';
 import { AlertTriangle, Compass, CheckCircle2 } from 'lucide-react';
 import { Glass } from './components/ui/Glass';
@@ -111,6 +112,11 @@ export function App() {
       return next;
     });
   };
+
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isWeatherActive, setIsWeatherActive] = useState<boolean>(() => {
+    return getStoredWeatherOptIn() === 'on';
+  });
 
   const [isTourActive, setIsTourActive] = useState(false);
   const tourDemoTasks = useMemo(() => generateTourDemoTasks(), []);
@@ -304,7 +310,7 @@ export function App() {
       <LazyMotion features={domMax}>
         <div className="min-h-screen text-zinc-100 font-sans selection:bg-orange-500 selection:text-black antialiased relative overflow-x-hidden">
           {/* Animated 3-blob aurora background with grain & 1.2s cross-fading mood layers */}
-          <AuroraBackground mood={workloadMood} reduceEffects={reduceEffects} />
+          <AuroraBackground mood={workloadMood} reduceEffects={reduceEffects} now={currentTime} />
 
           <div className="relative z-10 flex flex-col min-h-screen">
             {/* Floating Navigation (Desktop top-right glass pill + Mobile bottom bar + Animated settings) */}
@@ -321,6 +327,13 @@ export function App() {
               reduceEffects={reduceEffects}
               onToggleReduceEffects={toggleReduceEffects}
               onOpenAddTask={handleOpenAddModal}
+              onChangeName={() => setIsEditingName(true)}
+              onTurnOffWeather={() => {
+                clearStoredWeather();
+                setStoredWeatherOptIn('off');
+                setIsWeatherActive(false);
+              }}
+              isWeatherActive={isWeatherActive}
             />
 
             {/* Main Content Area */}
@@ -356,11 +369,17 @@ export function App() {
                     transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                     className="space-y-6 sm:space-y-8"
                   >
-                    {/* Welcome Greeting Banner (Glass style) */}
-                    <WelcomeGreeting
+                    {/* Claude-style Greeting Hero with word-by-word reveal */}
+                    <GreetingHero
                       facts={appFacts}
                       now={currentTime}
                       onAction={handleGreetingAction}
+                      reduceEffects={reduceEffects}
+                      isEditingName={isEditingName}
+                      onCancelEditName={() => setIsEditingName(false)}
+                      onNameChanged={() => {
+                        setIsEditingName(false);
+                      }}
                     />
 
                     {displayTasks.length === 0 ? (
