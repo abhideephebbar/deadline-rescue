@@ -194,7 +194,8 @@ Return strictly valid JSON in this exact structure:
 ${wrappedStudentText}`;
 
     // 6. Header-based API Authentication (Never put key in URL query string)
-    const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+    const model = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
     const apiRes = await fetch(geminiUrl, {
       method: 'POST',
@@ -216,8 +217,23 @@ ${wrappedStudentText}`;
     });
 
     if (!apiRes.ok) {
-      // Do not log raw response or keys
-      console.warn('Gemini API call returned non-200 HTTP status:', apiRes.status);
+      let errStatus = '';
+      let errMessage = '';
+      try {
+        const errData = await apiRes.json();
+        if (errData?.error) {
+          errStatus = typeof errData.error.status === 'string' ? errData.error.status : '';
+          if (typeof errData.error.message === 'string') {
+            errMessage = errData.error.message.slice(0, 80).replace(/AIza[0-9A-Za-z-_]{35}/g, '[REDACTED_KEY]');
+          }
+        }
+      } catch {
+        // ignore parse error
+      }
+      const info = [errStatus, errMessage].filter(Boolean).join(' - ');
+      console.warn(
+        `[ParseTasks API] Call failed for model ${model} with HTTP ${apiRes.status}${info ? ` (${info})` : ''}`
+      );
       const fallbackPayload = {
         fallbackToLocal: true,
         message: `Gemini API returned status ${apiRes.status}. Falling back to rule-based parser.`,

@@ -376,8 +376,23 @@ ${wrappedStudentMessage}`;
       });
 
       if (!apiRes.ok) {
-        // Honest diagnostic: Log only the HTTP status and model code
-        console.warn(`[Ask API] Call failed for model ${modelName} with HTTP ${apiRes.status}`);
+        let errStatus = '';
+        let errMessage = '';
+        try {
+          const errData = await apiRes.json();
+          if (errData?.error) {
+            errStatus = typeof errData.error.status === 'string' ? errData.error.status : '';
+            if (typeof errData.error.message === 'string') {
+              errMessage = errData.error.message.slice(0, 80).replace(/AIza[0-9A-Za-z-_]{35}/g, '[REDACTED_KEY]');
+            }
+          }
+        } catch {
+          // ignore json parse error
+        }
+        const info = [errStatus, errMessage].filter(Boolean).join(' - ');
+        console.warn(
+          `[Ask API] Call failed for model ${modelName} with HTTP ${apiRes.status}${info ? ` (${info})` : ''}`
+        );
         return { ok: false, status: apiRes.status };
       }
 
