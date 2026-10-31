@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, Clock, RotateCcw, Plus, Trash2 } from 'lucide-react';
+import { X, Clock, RotateCcw, Plus, Trash2, Moon } from 'lucide-react';
 import { CapacitySettings, DayOfWeek, Task, BlockedTimeSlot, TaskCategory } from '../types';
 import { calculateDailyLoads } from '../utils/capacity';
 import { getCategoryDefaults, saveCategoryDefaults, resetCategoryDefaults } from '../utils/categoryDefaults';
 import { CategoryCalibration } from '../utils/calibration';
+import { getWindDownTime, setWindDownTime, WIND_DOWN_OPTIONS, DEFAULT_WIND_DOWN_TIME } from '../utils/windDown';
 import { Modal } from './ui/Modal';
 
 interface CapacitySettingsModalProps {
@@ -50,10 +51,12 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
   const [newDays, setNewDays] = useState<DayOfWeek[]>(['mon', 'tue', 'wed', 'thu', 'fri']);
 
   const [categoryDefaults, setCategoryDefaultsState] = useState<Record<TaskCategory, number>>(() => getCategoryDefaults());
+  const [windDownTime, setWindDownTimeState] = useState<string>(() => getWindDownTime());
 
   useEffect(() => {
     if (isOpen) {
       setCategoryDefaultsState(getCategoryDefaults());
+      setWindDownTimeState(getWindDownTime());
     }
   }, [isOpen]);
 
@@ -62,10 +65,17 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
     setCategoryDefaultsState(updated);
   };
 
+  const handleWindDownChange = (val: string) => {
+    setWindDownTime(val);
+    setWindDownTimeState(val);
+  };
+
   const handleResetAll = () => {
     onResetDefaults();
     const reset = resetCategoryDefaults();
     setCategoryDefaultsState(reset);
+    setWindDownTime(DEFAULT_WIND_DOWN_TIME);
+    setWindDownTimeState(DEFAULT_WIND_DOWN_TIME);
   };
 
   const dailyLoads = calculateDailyLoads(tasks, settings, now, 7);
@@ -422,6 +432,35 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
             </div>
           );
         })()}
+
+        {/* Wind-Down & Sleep Protection */}
+        <div className="space-y-3 pt-2 border-t border-white/10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-xs font-semibold text-white uppercase tracking-wider flex items-center space-x-1.5">
+                <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Wind-down hour</span>
+              </h3>
+              <p className="text-[11px] text-zinc-400 mt-0.5">
+                Honesty check if starting study sessions late at night to protect tomorrow's focus.
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <select
+                value={windDownTime}
+                onChange={(e) => handleWindDownChange(e.target.value)}
+                className="bg-black border border-white/20 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-orange-500 font-mono cursor-pointer"
+              >
+                {WIND_DOWN_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value} className="bg-zinc-900 text-white">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
 
         {/* Modal Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-white/10 gap-3">

@@ -12,10 +12,12 @@ import {
   BookmarkCheck,
   Calendar,
   AlertCircle,
+  Moon,
 } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 import { Recommendation, Task, StopwatchState } from '../types';
 import { getStarterStep } from '../utils/starterSteps';
+import { isLateNight, hasShownLateNightPromptTonight, markLateNightPromptShown } from '../utils/windDown';
 import { Collapse } from './ui/Collapse';
 
 interface HeroCarouselProps {
@@ -58,6 +60,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
   const [activeIndex, setActiveIndex] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [lateNightPrompt, setLateNightPrompt] = useState<'idle' | 'prompt' | 'protected'>('idle');
 
   // Keep active index within bounds if tasks change
   const totalSlides = Math.min(3, recommendations.length);
@@ -92,8 +95,29 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
   const timerStopped = isTimedOnThisTask && stopwatch.status === 'stopped';
 
   const handleStartTimer = () => {
+    if (lateNightPrompt === 'idle' && isLateNight() && !hasShownLateNightPromptTonight()) {
+      markLateNightPromptShown();
+      setLateNightPrompt('prompt');
+      return;
+    }
+    setLateNightPrompt('idle');
     stopwatch.setSelectedTaskId(task.id);
     stopwatch.start();
+  };
+
+  const handleStartStarter = () => {
+    if (lateNightPrompt === 'idle' && isLateNight() && !hasShownLateNightPromptTonight()) {
+      markLateNightPromptShown();
+      setLateNightPrompt('prompt');
+      return;
+    }
+    setLateNightPrompt('idle');
+    if (stopwatch.startStarterMode) {
+      stopwatch.startStarterMode(task.id);
+    } else {
+      stopwatch.setSelectedTaskId(task.id);
+      stopwatch.start();
+    }
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -305,14 +329,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 
                     <button
                       type="button"
-                      onClick={() => {
-                        if (stopwatch.startStarterMode) {
-                          stopwatch.startStarterMode(task.id);
-                        } else {
-                          stopwatch.setSelectedTaskId(task.id);
-                          stopwatch.start();
-                        }
-                      }}
+                      onClick={handleStartStarter}
                       className="px-3.5 py-2.5 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-xs sm:text-sm font-medium text-zinc-200 hover:text-white flex items-center space-x-1.5 transition-colors cursor-pointer"
                     >
                       <Clock className="w-3.5 h-3.5 text-orange-400" />
@@ -418,6 +435,55 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
                   Just 5 minutes. You can stop after — starting is the whole game.
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Late-Night Honesty Guard Inline Prompt */}
+          {lateNightPrompt === 'prompt' && !timerActive && (
+            <div className="w-full p-4 rounded-2xl border border-indigo-500/30 bg-indigo-950/40 backdrop-blur-md space-y-3 animate-fade-in">
+              <div className="flex items-start space-x-2.5">
+                <Moon className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" />
+                <p className="text-xs sm:text-sm text-zinc-200 leading-relaxed font-medium">
+                  It's late. Starting now costs tomorrow's focus. One more push, or protect tomorrow?
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLateNightPrompt('idle');
+                    stopwatch.setSelectedTaskId(task.id);
+                    stopwatch.start();
+                  }}
+                  className="px-4 py-2 min-h-[40px] rounded-full border border-white/20 bg-white/10 hover:bg-white/20 text-white font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  One more push
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLateNightPrompt('protected')}
+                  className="px-4 py-2 min-h-[40px] rounded-full border border-indigo-400/40 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-200 hover:text-white font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Protect tomorrow
+                </button>
+              </div>
+            </div>
+          )}
+
+          {lateNightPrompt === 'protected' && !timerActive && (
+            <div className="w-full p-4 rounded-2xl border border-emerald-500/30 bg-emerald-950/30 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+              <div className="flex items-center space-x-2 text-xs sm:text-sm text-emerald-300 font-medium">
+                <Check className="w-4 h-4 text-emerald-400 shrink-0 stroke-[2.5]" />
+                <span>Protected. Next good window: tomorrow 09:00 (your best hours).</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLateNightPrompt('idle')}
+                className="text-xs text-zinc-400 hover:text-white underline self-start sm:self-auto cursor-pointer"
+              >
+                Change mind
+              </button>
             </div>
           )}
 
