@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Calendar, Check, Sparkles, ArrowRight, Clock } from 'lucide-react';
-import { Task, CapacitySettings } from '../types';
+import { Calendar, Check, Sparkles, ArrowRight, Clock, GraduationCap } from 'lucide-react';
+import { Task, CapacitySettings, SubjectAttendance } from '../types';
 import { calculateDailyLoads } from '../utils/capacity';
 import { simulateTaskDelay } from '../utils/forecast';
+import { calculateAttendanceStats, sortSubjectsByRisk } from '../utils/attendanceMath';
 import { Glass } from './ui/Glass';
 import { Collapse } from './ui/Collapse';
 
@@ -13,6 +14,7 @@ interface WeekForecastViewProps {
   onUpdateTaskDueDate?: (taskId: string, newDueDateIso: string) => void;
   onOpenCapacitySettings?: () => void;
   initialDayIndex?: number | null;
+  attendanceSubjects?: SubjectAttendance[];
 }
 
 export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
@@ -22,6 +24,7 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
   onUpdateTaskDueDate,
   onOpenCapacitySettings,
   initialDayIndex,
+  attendanceSubjects,
 }) => {
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(initialDayIndex ?? 0);
   const [simulatedTaskId, setSimulatedTaskId] = useState<string | null>(null);
@@ -67,6 +70,18 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
   const total7DayDemand = Math.round(displayLoads.reduce((sum, d) => sum + d.demandHours, 0) * 10) / 10;
   const total7DayCapacity = Math.round(displayLoads.reduce((sum, d) => sum + d.capacityHours, 0) * 10) / 10;
   const overloadedDaysCount = displayLoads.filter((d) => d.status === 'overloaded').length;
+
+  // Check if ANY subject is below threshold for one calm line above forecast strip
+  const atRiskSubject = sortSubjectsByRisk(attendanceSubjects || []).find((s) => {
+    const sStats = calculateAttendanceStats(s);
+    return sStats.isBelowThreshold;
+  });
+  const attendanceWarning = atRiskSubject
+    ? {
+        subject: atRiskSubject,
+        stats: calculateAttendanceStats(atRiskSubject),
+      }
+    : null;
 
   const handleDayClick = (idx: number) => {
     if (selectedDayIndex === idx) {
@@ -149,6 +164,18 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
 
       {/* Large Glass Panel */}
       <Glass className="p-5 sm:p-7 space-y-6">
+        {/* ONE calm line above forecast strip if ANY subject is below threshold */}
+        {attendanceWarning && (
+          <div className="flex items-center space-x-2 text-xs py-2 px-3 rounded-xl border border-amber-500/25 bg-amber-500/10 text-amber-300">
+            <GraduationCap className="w-4 h-4 shrink-0 text-amber-400" />
+            <span className="truncate">
+              Attendance: <span className="font-semibold text-white">{attendanceWarning.subject.code || attendanceWarning.subject.name}</span> at{' '}
+              <span className="font-semibold text-amber-200">{attendanceWarning.stats.formattedPct}</span> — attend the next{' '}
+              <span className="font-semibold text-amber-200">{attendanceWarning.stats.needToAttend}</span> to recover.
+            </span>
+          </div>
+        )}
+
         {/* 7-Day Columns Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
           {displayLoads.map((day, idx) => {

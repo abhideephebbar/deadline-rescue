@@ -20,6 +20,8 @@ import { ImportTasksModal } from './components/ImportTasksModal';
 import { CatchUpModal } from './components/CatchUpModal';
 import { ProductTour } from './components/ProductTour';
 import { AskModal } from './components/AskModal';
+import { AttendanceCardRow } from './components/AttendanceCardRow';
+import { AttendanceDetailModal } from './components/AttendanceDetailModal';
 import { Modal } from './components/ui/Modal';
 import { useTasks } from './hooks/useTasks';
 import { useCapacity } from './hooks/useCapacity';
@@ -33,6 +35,9 @@ import { getWorkloadMood } from './utils/mood';
 import { isSampleTaskSet, isSampleBannerDismissed, dismissSampleBanner } from './utils/sampleDetection';
 import { generateTourDemoTasks } from './utils/tour';
 import { clearStoredWeather, getStoredWeatherOptIn, setStoredWeatherOptIn } from './utils/weather';
+import { SubjectAttendance } from './types';
+import { getStoredAttendance, saveStoredAttendance, clearStoredAttendance } from './utils/attendanceMath';
+import { clearAllAppData } from './utils/storageMigration';
 import { Task, Priority, TaskCategory } from './types';
 import { AlertTriangle, Compass, CheckCircle2, ChevronDown } from 'lucide-react';
 import { Glass } from './components/ui/Glass';
@@ -147,6 +152,28 @@ export function App() {
   const [emailTaskTarget, setEmailTaskTarget] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
+
+  // Attendance Guard State
+  const [attendanceSubjects, setAttendanceSubjects] = useState<SubjectAttendance[]>(() => getStoredAttendance());
+  const [selectedAttendanceSubject, setSelectedAttendanceSubject] = useState<SubjectAttendance | null>(null);
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+
+  const handleSaveAttendanceSubject = (subject: SubjectAttendance) => {
+    setAttendanceSubjects((prev) => {
+      const exists = prev.some((s) => s.id === subject.id);
+      const updated = exists ? prev.map((s) => (s.id === subject.id ? subject : s)) : [...prev, subject];
+      saveStoredAttendance(updated);
+      return updated;
+    });
+  };
+
+  const handleDeleteAttendanceSubject = (id: string) => {
+    setAttendanceSubjects((prev) => {
+      const updated = prev.filter((s) => s.id !== id);
+      saveStoredAttendance(updated);
+      return updated;
+    });
+  };
 
   // Global 30-second ticker to keep deadline countdowns, buffers, and urgency ranks fresh live
   const [currentTime, setCurrentTime] = useState(() => new Date());
@@ -462,6 +489,19 @@ export function App() {
                           </section>
                         )}
 
+                        {/* Compact Attendance Guard Card Row beneath hero area */}
+                        <AttendanceCardRow
+                          subjects={attendanceSubjects}
+                          onSelectSubject={(subject) => {
+                            setSelectedAttendanceSubject(subject);
+                            setIsAttendanceModalOpen(true);
+                          }}
+                          onAddNewSubject={() => {
+                            setSelectedAttendanceSubject(null);
+                            setIsAttendanceModalOpen(true);
+                          }}
+                        />
+
                         {/* Horizontal Task Rails (Keep going, Due soon, Catch up) */}
                         <TaskRail
                           title="Keep Going"
@@ -547,6 +587,7 @@ export function App() {
                     capacitySettings={capacitySettings}
                     now={currentTime}
                     initialDayIndex={focusWeekDayIndex}
+                    attendanceSubjects={attendanceSubjects}
                     onUpdateTaskDueDate={(taskId, newDueDate) => {
                       updateTask(taskId, { dueDateTime: newDueDate });
                     }}
@@ -649,6 +690,9 @@ export function App() {
                   type="button"
                   onClick={() => {
                     clearAllTasks();
+                    clearStoredAttendance();
+                    setAttendanceSubjects([]);
+                    clearAllAppData();
                     setIsClearConfirmOpen(false);
                   }}
                   className="px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors cursor-pointer"
@@ -720,6 +764,17 @@ export function App() {
             existingTasks={tasks}
             capacitySettings={capacitySettings}
             onNavigateToWeek={handleNavigateToWeek}
+          />
+
+          <AttendanceDetailModal
+            isOpen={isAttendanceModalOpen}
+            onClose={() => {
+              setIsAttendanceModalOpen(false);
+              setSelectedAttendanceSubject(null);
+            }}
+            subject={selectedAttendanceSubject}
+            onSave={handleSaveAttendanceSubject}
+            onDelete={handleDeleteAttendanceSubject}
           />
 
           <ProductTour

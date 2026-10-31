@@ -95,3 +95,14 @@ export interface StoredStopwatchState {
   updatedAt: number;
 }
 
+export interface SubjectAttendance {
+  id: string;
+  name: string;
+  code?: string;
+  thresholdPct: number;
+  classesHeld: number;
+  classesAttended: number;
+  classesLeft?: number;
+}
+
+

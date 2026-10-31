@@ -5,6 +5,36 @@ export const STORAGE_VERSION_KEY = 'deadline_rescue_schema_version';
 export const TASKS_STORAGE_KEY = 'deadline_rescue_tasks_v2';
 export const LEGACY_TASKS_KEY = 'deadline_rescue_tasks_v1';
 export const SESSIONS_STORAGE_KEY = 'deadline_rescue_stopwatch_sessions_v1';
+export const ATTENDANCE_STORAGE_KEY = 'deadline_rescue_attendance';
+
+/**
+ * Wipes all application data keys for a clean slate.
+ */
+export function clearAllAppData(): void {
+  if (typeof localStorage === 'undefined') return;
+  const keysToWipe = [
+    TASKS_STORAGE_KEY,
+    LEGACY_TASKS_KEY,
+    SESSIONS_STORAGE_KEY,
+    ATTENDANCE_STORAGE_KEY,
+    'deadline_rescue_stopwatch_state',
+    'deadline_rescue_category_defaults',
+    'deadline_rescue_starter_stats',
+    'deadline_rescue_name',
+    'deadline_rescue_weather_opt_in',
+    'deadline_rescue_weather_cache',
+    'deadline_rescue_wind_down',
+    'deadline_rescue_calibration_exclusions',
+    'deadline_rescue_sample_banner_dismissed',
+  ];
+  for (const k of keysToWipe) {
+    try {
+      localStorage.removeItem(k);
+    } catch {
+      // ignore
+    }
+  }
+}
 
 /**
  * Migrates localStorage data safely to the current schema version without data loss.
