@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Calendar, Check, Sparkles, ArrowRight, Clock } from 'lucide-react';
 import { Task, CapacitySettings } from '../types';
 import { calculateDailyLoads } from '../utils/capacity';
@@ -12,6 +12,7 @@ interface WeekForecastViewProps {
   now?: Date;
   onUpdateTaskDueDate?: (taskId: string, newDueDateIso: string) => void;
   onOpenCapacitySettings?: () => void;
+  initialDayIndex?: number | null;
 }
 
 export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
@@ -20,12 +21,30 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
   now = new Date(),
   onUpdateTaskDueDate,
   onOpenCapacitySettings,
+  initialDayIndex,
 }) => {
-  const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(0);
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(initialDayIndex ?? 0);
   const [simulatedTaskId, setSimulatedTaskId] = useState<string | null>(null);
   const [delayDays, setDelayDays] = useState<number>(1);
   const [applySuccessMessage, setApplySuccessMessage] = useState<string | null>(null);
   const detailsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof initialDayIndex === 'number') {
+      setSelectedDayIndex(initialDayIndex);
+      const loads = calculateDailyLoads(tasks, capacitySettings, now, 7);
+      const day = loads[initialDayIndex];
+      if (day) {
+        const dayTasks = tasks.filter((t) => !t.completed && !t.dropped && day.taskIds.includes(t.id));
+        if (dayTasks.length > 0) {
+          setSimulatedTaskId(dayTasks[0].id);
+        }
+      }
+      setTimeout(() => {
+        detailsRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+    }
+  }, [initialDayIndex]);
 
   const baseLoads = calculateDailyLoads(tasks, capacitySettings, now, 7);
   const incompleteTasks = tasks.filter((t) => !t.completed && !t.dropped);

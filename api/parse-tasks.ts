@@ -165,12 +165,13 @@ Your SOLE purpose is to extract coursework assignment metadata into the specifie
 Extract all assignments, labs, exams, problem sets, quizzes, and readings from the student text.
 For each item, output:
 - title: concise assignment name (e.g. "Problem Set 5", "Kernel Concurrency Lab")
-- course: standard course code (e.g. "CS 350", "MATH 220", or "GENERAL" if unknown)
+- course: copy the course identifier EXACTLY as it appears in the text ('DBMS' stays 'DBMS'). NEVER infer, expand, or fabricate codes. Use 'GENERAL' only when no course is named. If the text names a course without a code, use that name verbatim.
 - dueDateTime: valid ISO-8601 date string. If cutoff time is not given, default to 23:59:00 on the due day.
-- estimatedHours: realistic estimate in hours (e.g. 2.5). Use ~2.0 for problem sets, ~3.5 for labs, ~4.5 for projects/exams, ~0.75 for quizzes.
+- estimatedHours: realistic estimate in hours (e.g. 2.5). Use ~2.0 for problem sets/assignments, ~3.5 for labs, ~4.5 for projects/exams, ~0.75 for quizzes, ~1.0 for reading.
 - priority: one of "urgent", "high", "medium", "low"
 - category: one of "assignment", "lab", "project", "reading", "quiz", "exam", "other"
-- notes: key details or brief excerpt
+- notes: capture qualifiers (chapters, topics, syllabus ranges, "submit on portal")
+- uncertain: boolean (true when the text contains hedges such as "not sure", "maybe", "someone said", "I think", "possibly")
 - isDateAmbiguous: boolean (true if only weekday given or exact date is ambiguous)
 - ambiguityReason: short explanation if ambiguous
 
@@ -185,6 +186,7 @@ Return strictly valid JSON in this exact structure:
       "priority": "medium",
       "category": "assignment",
       "notes": "string",
+      "uncertain": false,
       "isDateAmbiguous": false,
       "ambiguityReason": ""
     }

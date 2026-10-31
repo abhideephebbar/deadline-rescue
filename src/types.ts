@@ -16,6 +16,7 @@ export interface Task {
   completed: boolean;
   completedAt?: string;
   dropped?: boolean;
+  needsReview?: boolean;
   createdAt: string;
   updatedAt: string;
 }

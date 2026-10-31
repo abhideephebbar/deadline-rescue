@@ -7,11 +7,14 @@ import {
   AlertTriangle, 
   ArrowLeft, 
   Plus, 
-  Cpu
+  Cpu,
+  Check,
+  ArrowRight
 } from 'lucide-react';
-import { Task, TaskCategory } from '../types';
+import { Task, TaskCategory, CapacitySettings } from '../types';
 import { ParsedTaskCandidate } from '../utils/importParser';
 import { parseTasksWithFallback } from '../utils/importService';
+import { calculateDailyLoads } from '../utils/capacity';
 import { Modal } from './ui/Modal';
 
 interface ImportTasksModalProps {
@@ -19,6 +22,9 @@ interface ImportTasksModalProps {
   onClose: () => void;
   onImportTasks: (tasks: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'completed'>[]) => void;
   now?: Date;
+  existingTasks?: Task[];
+  capacitySettings?: CapacitySettings;
+  onNavigateToWeek?: (dayIndex?: number) => void;
 }
 
 const SAMPLE_SYLLABUS = `CS 350 - Operating Systems: Lab 3 (Virtual Memory) due Oct 28 at 11:59 PM (~4h effort).
@@ -38,13 +44,22 @@ export const ImportTasksModal: React.FC<ImportTasksModalProps> = ({
   onClose,
   onImportTasks,
   now = new Date(),
+  existingTasks,
+  capacitySettings,
+  onNavigateToWeek,
 }) => {
-  const [step, setStep] = useState<'input' | 'review'>('input');
+  const [step, setStep] = useState<'input' | 'review' | 'confirmed'>('input');
   const [rawText, setRawText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [candidates, setCandidates] = useState<ParsedTaskCandidate[]>([]);
   const [parserSource, setParserSource] = useState<'gemini' | 'rule-based'>('rule-based');
   const [parseNotice, setParseNotice] = useState<string>('');
+  const [postImportStats, setPostImportStats] = useState<{
+    count: number;
+    totalDemand: number;
+    totalCapacity: number;
+    overloadedDay: { dayLabel: string; dayIndex: number; demandHours: number; capacityHours: number } | null;
+  } | null>(null);
 
   // Reset state when opening
   useEffect(() => {
@@ -53,6 +68,7 @@ export const ImportTasksModal: React.FC<ImportTasksModalProps> = ({
       setRawText('');
       setCandidates([]);
       setIsParsing(false);
+      setPostImportStats(null);
     }
   }, [isOpen]);
 
@@ -94,16 +110,51 @@ export const ImportTasksModal: React.FC<ImportTasksModalProps> = ({
     const selected = candidates.filter((c) => c.selected);
     const toImport = selected.map((c) => ({
       title: c.title.trim() || 'Imported Task',
-      course: c.course.trim().toUpperCase() || 'GENERAL',
+      course: c.course.trim() || 'GENERAL',
       dueDateTime: c.dueDateTime,
       estimatedHours: Math.max(0.25, Number(c.estimatedHours) || 2),
       priority: c.priority,
       category: c.category,
-      notes: c.notes ? `${c.notes}\n// Imported via Paste-to-Import` : '// Imported via Paste-to-Import',
+      notes: c.notes ? c.notes.trim() : undefined,
+      needsReview: Boolean(c.uncertain),
     }));
 
     onImportTasks(toImport);
-    onClose();
+
+    if (capacitySettings) {
+      const syntheticTasks: Task[] = [
+        ...(existingTasks || []),
+        ...toImport.map((t, idx) => ({
+          ...t,
+          id: `temp-${Date.now()}-${idx}`,
+          completed: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })),
+      ];
+
+      const loads = calculateDailyLoads(syntheticTasks, capacitySettings, now, 7);
+      const totalDemand = Math.round(loads.reduce((s, d) => s + d.demandHours, 0) * 10) / 10;
+      const totalCapacity = Math.round(loads.reduce((s, d) => s + d.capacityHours, 0) * 10) / 10;
+      const overloaded = loads.find((d) => d.status === 'overloaded');
+
+      setPostImportStats({
+        count: toImport.length,
+        totalDemand,
+        totalCapacity,
+        overloadedDay: overloaded
+          ? {
+              dayLabel: overloaded.dayLabel,
+              dayIndex: loads.indexOf(overloaded),
+              demandHours: overloaded.demandHours,
+              capacityHours: overloaded.capacityHours,
+            }
+          : null,
+      });
+      setStep('confirmed');
+    } else {
+      onClose();
+    }
   };
 
   const selectedCount = candidates.filter((c) => c.selected).length;
@@ -124,12 +175,18 @@ export const ImportTasksModal: React.FC<ImportTasksModalProps> = ({
               <span>Import coursework</span>
             </div>
             <h2 className="text-xl font-bold text-white tracking-tight mt-1">
-              {step === 'input' ? 'Paste syllabus or announcement' : 'Review & confirm tasks'}
+              {step === 'input'
+                ? 'Paste syllabus or announcement'
+                : step === 'review'
+                ? 'Review & confirm tasks'
+                : 'Tasks imported'}
             </h2>
             <p className="text-xs text-zinc-400 mt-1">
               {step === 'input'
                 ? 'Drop in text from Canvas, an instructor email, or a study group chat to extract deadlines and effort.'
-                : 'Review detected assignments, correct dates, and choose what you want to add.'}
+                : step === 'review'
+                ? 'Review detected assignments, correct dates, and choose what you want to add.'
+                : 'Here is how your study week looks with these tasks added.'}
             </p>
           </div>
           <button
@@ -316,6 +373,17 @@ export const ImportTasksModal: React.FC<ImportTasksModalProps> = ({
                           placeholder="Assignment Title"
                           className="flex-1 p-1.5 rounded bg-black border border-white/20 text-white font-medium text-xs focus:border-orange-500 focus:outline-none min-w-[150px]"
                         />
+
+                        {/* Uncertainty Badge */}
+                        {candidate.uncertain && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/30 whitespace-nowrap"
+                            title="Contains uncertainty or hedges (e.g. 'not sure')"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                            Uncertain
+                          </span>
+                        )}
                       </div>
 
                       <button
@@ -411,6 +479,17 @@ export const ImportTasksModal: React.FC<ImportTasksModalProps> = ({
                         </button>
                       </div>
                     </div>
+
+                    {/* Notes / Qualifiers */}
+                    <div className="pt-1">
+                      <input
+                        type="text"
+                        value={candidate.notes}
+                        onChange={(e) => handleFieldChange(candidate.id, 'notes', e.target.value)}
+                        placeholder="Notes (chapters, syllabus, portal submission)"
+                        className="w-full px-2 py-1 rounded bg-black/60 border border-white/10 text-zinc-300 text-xs focus:border-orange-500 focus:outline-none"
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -445,6 +524,57 @@ export const ImportTasksModal: React.FC<ImportTasksModalProps> = ({
                   <span>Import {selectedCount} task{selectedCount === 1 ? '' : 's'}</span>
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: POST-IMPORT AHA CONFIRMATION */}
+        {step === 'confirmed' && postImportStats && (
+          <div className="py-6 sm:py-8 px-4 space-y-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+              <Check className="w-6 h-6" />
+            </div>
+
+            <div className="space-y-2 max-w-lg mx-auto">
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                {postImportStats.count} task{postImportStats.count === 1 ? '' : 's'} added
+              </h3>
+              <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
+                This week needs <span className="font-semibold text-white">{postImportStats.totalDemand}h</span> of your{' '}
+                <span className="font-semibold text-white">{postImportStats.totalCapacity}h</span> capacity
+                {postImportStats.overloadedDay ? (
+                  <>
+                    {' '}— but <span className="font-semibold text-orange-400">{postImportStats.overloadedDay.dayLabel}</span> is
+                    overloaded ({postImportStats.overloadedDay.demandHours}h / {postImportStats.overloadedDay.capacityHours}h).
+                    Move something?
+                  </>
+                ) : (
+                  <>. You&apos;re well within your planned study limits.</>
+                )}
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
+              {postImportStats.overloadedDay && onNavigateToWeek && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onNavigateToWeek(postImportStats.overloadedDay!.dayIndex);
+                    onClose();
+                  }}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-black font-semibold text-xs tracking-wide transition-colors cursor-pointer flex items-center justify-center space-x-2 shadow-lg shadow-orange-500/20"
+                >
+                  <span>Move something in Week view</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-white/10 hover:bg-white/10 text-white text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Done
+              </button>
             </div>
           </div>
         )}

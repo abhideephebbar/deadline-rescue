@@ -1,4 +1,5 @@
 import { Priority, TaskCategory } from '../types';
+import { getCategoryDefaults } from './categoryDefaults';
 
 export interface ParsedTaskCandidate {
   id: string;
@@ -9,6 +10,7 @@ export interface ParsedTaskCandidate {
   priority: Priority;
   category: TaskCategory;
   notes: string;
+  uncertain?: boolean;
   isDateAmbiguous: boolean;
   ambiguityReason?: string;
   selected: boolean;
@@ -41,47 +43,60 @@ const WEEKDAY_MAP: Record<string, number> = {
 };
 
 /**
- * Extracts course codes such as CS 350, MATH 101, BIO 112, ECON 201, CS350
+ * Extracts course codes verbatim from input text, e.g. CS 350, CT-2, DBMS, DS, MATH.
+ * Never invents, expands, or fabricates codes.
  */
 export function extractCourseCode(text: string): { code: string; cleanText: string } {
-  const courseRegex = /\b([a-zA-Z]{2,4})\s*[-_]?\s*(\d{3}[a-zA-Z]?)\b/;
+  // 1. Check alphanumeric course code (e.g. CS 350, CT-2, MATH 220, MATH101)
+  const courseRegex = /\b([a-zA-Z]{2,4})\s*[-_]?\s*(\d{1,3}[a-zA-Z]?)\b/;
   const match = text.match(courseRegex);
   if (match) {
     const code = `${match[1].toUpperCase()} ${match[2].toUpperCase()}`;
     const cleanText = text.replace(match[0], '').replace(/\s{2,}/g, ' ').trim();
     return { code, cleanText };
   }
+
+  // 2. Check standalone common course acronyms/subjects verbatim
+  const acronymRegex = /\b(DBMS|DS|OS|CN|DAA|AI|ML|OOP|SE|COA|TOC|CD|MATH|PHYS|CHEM|BIO|ECON)\b/i;
+  const acrMatch = text.match(acronymRegex);
+  if (acrMatch) {
+    const code = acrMatch[0].toUpperCase();
+    const cleanText = text.replace(acrMatch[0], '').replace(/\s{2,}/g, ' ').trim();
+    return { code, cleanText };
+  }
+
   return { code: 'GENERAL', cleanText: text };
 }
 
 /**
- * Extracts category and default priority & effort
+ * Extracts category and default priority & effort using user category defaults
  */
 export function extractCategoryAndDefaults(text: string): {
   category: TaskCategory;
   defaultEffort: number;
   priority: Priority;
 } {
+  const defaults = getCategoryDefaults();
   const lower = text.toLowerCase();
 
   if (/\b(exam|midterm|final|test)\b/.test(lower)) {
-    return { category: 'exam', defaultEffort: 4.0, priority: 'urgent' };
+    return { category: 'exam', defaultEffort: defaults.exam, priority: 'urgent' };
   }
   if (/\b(lab|laboratory)\b/.test(lower)) {
-    return { category: 'lab', defaultEffort: 3.0, priority: 'high' };
+    return { category: 'lab', defaultEffort: defaults.lab, priority: 'high' };
   }
   if (/\b(project|paper|essay|milestone|term paper)\b/.test(lower)) {
-    return { category: 'project', defaultEffort: 4.5, priority: 'high' };
+    return { category: 'project', defaultEffort: defaults.project, priority: 'high' };
   }
   if (/\b(quiz)\b/.test(lower)) {
-    return { category: 'quiz', defaultEffort: 0.75, priority: 'medium' };
+    return { category: 'quiz', defaultEffort: defaults.quiz, priority: 'medium' };
   }
   if (/\b(reading|chapter|ch\.\s*\d+|read\b)/.test(lower)) {
-    return { category: 'reading', defaultEffort: 1.0, priority: 'low' };
+    return { category: 'reading', defaultEffort: defaults.reading, priority: 'low' };
   }
 
   // Default
-  return { category: 'assignment', defaultEffort: 2.0, priority: 'medium' };
+  return { category: 'assignment', defaultEffort: defaults.assignment, priority: 'medium' };
 }
 
 /**
@@ -263,14 +278,32 @@ export function cleanTaskTitle(text: string, course: string, category: TaskCateg
 }
 
 /**
+ * Extracts specific qualifiers like chapters, syllabus, submission instructions
+ */
+export function extractTaskQualifiers(text: string): string {
+  const qualifiers: string[] = [];
+  const portalMatch = text.match(/\b(submit\s+on\s+portal|portal\s+submission|turn\s+in\s+on\s+canvas|upload\s+to\s+gradescope|submit\s+online)\b/i);
+  if (portalMatch) qualifiers.push(portalMatch[0].trim());
+
+  const chapterMatch = text.match(/\b(chapters?\s+\d+(?:-\d+)?|ch\.\s*\d+(?:-\d+)?|pages?\s+\d+(?:-\d+)?|full\s+check)\b/i);
+  if (chapterMatch) qualifiers.push(chapterMatch[0].trim());
+
+  return qualifiers.join('; ');
+}
+
+/**
  * Primary rule-based parser that splits raw coursework text into candidates.
  */
 export function parseCourseworkText(rawText: string, now: Date = new Date()): ParsedTaskCandidate[] {
   if (!rawText || !rawText.trim()) return [];
 
-  // Split into lines or bullet points
-  const rawLines = rawText
-    .split(/\r?\n|;|(?<=\.)\s+(?=[A-Z0-9])/)
+  // Normalize delimiters and split by lines, bullets, semicolons, periods, or conversational joins like ", also"
+  const normalized = rawText
+    .replace(/,\s*(also|and)\s+/gi, '\n')
+    .replace(/(?<=[.!?])\s+(?=[A-Z0-9]|someone\b|also\b)/gi, '\n');
+
+  const rawLines = normalized
+    .split(/\r?\n|;/)
     .map((line) => line.trim())
     .filter((line) => line.length > 5);
 
@@ -278,7 +311,7 @@ export function parseCourseworkText(rawText: string, now: Date = new Date()): Pa
 
   rawLines.forEach((line, index) => {
     // Ignore lines that look like generic greetings or signatures
-    if (/^(hi|hello|dear|thanks|best|cheers|sincerely|regards)/i.test(line)) {
+    if (/^(hi|hello|dear|thanks|best|cheers|sincerely|regards)\b/i.test(line)) {
       return;
     }
 
@@ -288,11 +321,18 @@ export function parseCourseworkText(rawText: string, now: Date = new Date()): Pa
     const { dueDateTime, isDateAmbiguous, ambiguityReason } = extractDueDate(line, now);
     const title = cleanTaskTitle(textAfterCourse, course, category);
 
+    // Detect hedges ("someone said", "not sure", "maybe", etc.)
+    const hasHedge = /\b(not sure|maybe|someone said|i think|possibly|unconfirmed|might be|someone told)\b/i.test(line);
+
+    // Extract notes/qualifiers (e.g. chapters 3-5, submit on portal)
+    const qualifiers = extractTaskQualifiers(line);
+    const notes = qualifiers || line;
+
     // Assess confidence
     let confidence: 'high' | 'medium' | 'low' = 'high';
     if (course === 'GENERAL' && isDateAmbiguous) {
       confidence = 'low';
-    } else if (course === 'GENERAL' || isDateAmbiguous) {
+    } else if (course === 'GENERAL' || isDateAmbiguous || hasHedge) {
       confidence = 'medium';
     }
 
@@ -304,7 +344,8 @@ export function parseCourseworkText(rawText: string, now: Date = new Date()): Pa
       estimatedHours,
       priority,
       category,
-      notes: line,
+      notes,
+      uncertain: hasHedge,
       isDateAmbiguous,
       ambiguityReason,
       selected: true,

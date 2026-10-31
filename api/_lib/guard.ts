@@ -24,6 +24,7 @@ export interface ValidatedCourseworkTask {
   priority: 'urgent' | 'high' | 'medium' | 'low';
   category: 'assignment' | 'lab' | 'project' | 'reading' | 'quiz' | 'exam' | 'other';
   notes: string;
+  uncertain?: boolean;
   isDateAmbiguous?: boolean;
   ambiguityReason?: string;
 }
@@ -190,9 +191,9 @@ export function sanitizeExtractedTask(
   if (!rawTitle) return null;
   const title = rawTitle.slice(0, 160);
 
-  // Course validation
+  // Course validation - preserve verbatim identifier, never fabricate
   const rawCourse = typeof raw.course === 'string' ? raw.course.trim().toUpperCase() : 'GENERAL';
-  const course = rawCourse.slice(0, 20) || 'GENERAL';
+  const course = rawCourse.slice(0, 50) || 'GENERAL';
 
   // Due date validation
   let dueDateTime = fallbackDateIso;
@@ -220,6 +221,9 @@ export function sanitizeExtractedTask(
   // Notes validation
   const notes = typeof raw.notes === 'string' ? raw.notes.slice(0, 500) : '';
 
+  // Uncertainty flag (hedged text)
+  const uncertain = Boolean(raw.uncertain);
+
   return {
     title,
     course,
@@ -228,6 +232,7 @@ export function sanitizeExtractedTask(
     priority,
     category,
     notes,
+    uncertain,
     isDateAmbiguous: Boolean(raw.isDateAmbiguous),
     ambiguityReason: typeof raw.ambiguityReason === 'string' ? raw.ambiguityReason.slice(0, 200) : undefined,
   };

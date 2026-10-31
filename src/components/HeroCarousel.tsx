@@ -182,6 +182,16 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
               <Calendar className="w-3.5 h-3.5" />
               <span>{task.category}</span>
             </span>
+
+            {task.needsReview && (
+              <span
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded"
+                title="Imported with uncertainty — review details"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                Needs review
+              </span>
+            )}
           </div>
 
           {/* Muted 2-Line Grounded Reason with Tooltip */}

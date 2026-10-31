@@ -143,6 +143,7 @@ export function App() {
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
   const [isCatchUpModalOpen, setIsCatchUpModalOpen] = useState(false);
   const [isAskModalOpen, setIsAskModalOpen] = useState(false);
+  const [focusWeekDayIndex, setFocusWeekDayIndex] = useState<number | null>(null);
   const [emailTaskTarget, setEmailTaskTarget] = useState<Task | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteCandidateId, setDeleteCandidateId] = useState<string | null>(null);
@@ -251,10 +252,17 @@ export function App() {
     notes?: string;
   }) => {
     if (editingTask) {
-      updateTask(editingTask.id, data);
+      updateTask(editingTask.id, { ...data, needsReview: false });
     } else {
       addTask(data);
     }
+  };
+
+  const handleNavigateToWeek = (dayIndex?: number) => {
+    if (typeof dayIndex === 'number') {
+      setFocusWeekDayIndex(dayIndex);
+    }
+    handleTabChange('week');
   };
 
   const handleImportTasks = (
@@ -538,6 +546,7 @@ export function App() {
                     tasks={displayTasks}
                     capacitySettings={capacitySettings}
                     now={currentTime}
+                    initialDayIndex={focusWeekDayIndex}
                     onUpdateTaskDueDate={(taskId, newDueDate) => {
                       updateTask(taskId, { dueDateTime: newDueDate });
                     }}
@@ -708,6 +717,9 @@ export function App() {
             onClose={() => setIsImportModalOpen(false)}
             onImportTasks={handleImportTasks}
             now={currentTime}
+            existingTasks={tasks}
+            capacitySettings={capacitySettings}
+            onNavigateToWeek={handleNavigateToWeek}
           />
 
           <ProductTour

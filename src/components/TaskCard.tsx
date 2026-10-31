@@ -102,6 +102,16 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               <span className="text-zinc-500 text-[11px] capitalize hidden sm:inline">
                 • {task.category}
               </span>
+
+              {task.needsReview && (
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.2 rounded"
+                  title="Imported with uncertainty — review details"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  Needs review
+                </span>
+              )}
             </div>
 
             {/* Task Title */}

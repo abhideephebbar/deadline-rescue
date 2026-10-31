@@ -117,6 +117,15 @@ export const NowCard: React.FC<NowCardProps> = ({
             <span className="text-xs text-zinc-400 font-mono">
               {task.estimatedHours}h estimated
             </span>
+            {task.needsReview && (
+              <span
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded"
+                title="Imported with uncertainty — review details"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                Needs review
+              </span>
+            )}
           </div>
 
           <h2 className="text-2xl sm:text-[30px] font-bold text-white tracking-tight leading-tight">

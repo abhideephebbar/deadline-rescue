@@ -3,6 +3,7 @@ import { X, AlertCircle, Check, Sparkles } from 'lucide-react';
 import { Task, Priority, TaskCategory } from '../types';
 import { toDateTimeLocalString } from '../utils/date';
 import { CategoryCalibration, getCalibratedEstimateSuggestion } from '../utils/calibration';
+import { getCategoryDefaults } from '../utils/categoryDefaults';
 import { Modal } from './ui/Modal';
 
 interface TaskFormModalProps {
@@ -84,10 +85,11 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
         tomorrowMidnight.setDate(tomorrowMidnight.getDate() + 1);
         tomorrowMidnight.setHours(23, 59, 0, 0);
 
+        const categoryDefs = getCategoryDefaults();
         setTitle('');
         setCourse('');
         setDueDateTime(toDateTimeLocalString(tomorrowMidnight));
-        setEstimatedHours(2);
+        setEstimatedHours(categoryDefs.assignment ?? 2);
         setPriority('medium');
         setCategory('assignment');
         setNotes('');
@@ -250,7 +252,14 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
               </label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value as TaskCategory)}
+                onChange={(e) => {
+                  const newCat = e.target.value as TaskCategory;
+                  setCategory(newCat);
+                  if (!initialTask) {
+                    const defs = getCategoryDefaults();
+                    setEstimatedHours(defs[newCat] ?? 2);
+                  }
+                }}
                 className="w-full px-3 py-2 bg-black border border-white/15 focus:border-orange-500 rounded-lg text-white text-sm capitalize focus:outline-none"
               >
                 <option value="assignment">Assignment</option>

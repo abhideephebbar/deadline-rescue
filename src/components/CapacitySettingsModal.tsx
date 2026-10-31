@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Clock, RotateCcw, Plus, Trash2 } from 'lucide-react';
-import { CapacitySettings, DayOfWeek, Task, BlockedTimeSlot } from '../types';
+import { CapacitySettings, DayOfWeek, Task, BlockedTimeSlot, TaskCategory } from '../types';
 import { calculateDailyLoads } from '../utils/capacity';
+import { getCategoryDefaults, saveCategoryDefaults, resetCategoryDefaults } from '../utils/categoryDefaults';
 import { Modal } from './ui/Modal';
 
 interface CapacitySettingsModalProps {
@@ -42,6 +43,25 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
   const [newStart, setNewStart] = useState('09:00');
   const [newEnd, setNewEnd] = useState('15:00');
   const [newDays, setNewDays] = useState<DayOfWeek[]>(['mon', 'tue', 'wed', 'thu', 'fri']);
+
+  const [categoryDefaults, setCategoryDefaultsState] = useState<Record<TaskCategory, number>>(() => getCategoryDefaults());
+
+  useEffect(() => {
+    if (isOpen) {
+      setCategoryDefaultsState(getCategoryDefaults());
+    }
+  }, [isOpen]);
+
+  const handleUpdateCategoryDefault = (cat: TaskCategory, val: number) => {
+    const updated = saveCategoryDefaults({ [cat]: val });
+    setCategoryDefaultsState(updated);
+  };
+
+  const handleResetAll = () => {
+    onResetDefaults();
+    const reset = resetCategoryDefaults();
+    setCategoryDefaultsState(reset);
+  };
 
   const dailyLoads = calculateDailyLoads(tasks, settings, now, 7);
   const todayLoad = dailyLoads[0];
@@ -298,10 +318,58 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
           </div>
         </div>
 
+        {/* Typical Prep Times */}
+        <div className="space-y-3 pt-2 border-t border-white/10">
+          <div>
+            <h3 className="text-xs font-semibold text-white uppercase tracking-wider flex items-center justify-between">
+              <span>My typical prep time</span>
+              <span className="text-[11px] text-zinc-400 font-normal lowercase">hours per assignment</span>
+            </h3>
+            <p className="text-[11px] text-zinc-400 mt-0.5">
+              Default prep hours used when importing or creating assignments.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {[
+              { cat: 'quiz', label: 'Quiz' },
+              { cat: 'assignment', label: 'Assignment' },
+              { cat: 'lab', label: 'Lab' },
+              { cat: 'exam', label: 'Exam' },
+              { cat: 'project', label: 'Project' },
+              { cat: 'reading', label: 'Reading' },
+            ].map(({ cat, label }) => (
+              <div
+                key={cat}
+                className="p-2.5 rounded-lg border border-white/10 bg-black/40 flex items-center justify-between"
+              >
+                <span className="text-xs text-zinc-300 font-medium">{label}</span>
+                <div className="flex items-center space-x-1">
+                  <input
+                    type="number"
+                    min="0.25"
+                    max="40"
+                    step="0.25"
+                    value={categoryDefaults[cat as TaskCategory] ?? 2}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      if (!isNaN(val) && val > 0) {
+                        handleUpdateCategoryDefault(cat as TaskCategory, val);
+                      }
+                    }}
+                    className="w-14 p-1 text-center font-mono text-xs bg-black border border-white/20 rounded text-orange-400 focus:outline-none focus:border-orange-500"
+                  />
+                  <span className="text-[11px] text-zinc-500">h</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Modal Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-white/10 gap-3">
           <button
-            onClick={onResetDefaults}
+            onClick={handleResetAll}
             type="button"
             className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors"
           >
