@@ -16,6 +16,7 @@ export interface ChatMessage {
   text: string;
   source?: 'gemini' | 'rule-based';
   fallbackReason?: FallbackReason;
+  hideSourceBadge?: boolean;
   confirmation?: GroundedConfirmation;
   appliedNotice?: string;
   clarificationOptions?: Array<{ label: string; query: string }>;
@@ -40,6 +41,24 @@ interface AskModalProps {
   onStartTask: (taskId: string) => void;
 }
 
+type ConnectionState = 'checking' | 'ready' | 'degraded' | 'no_key';
+
+const isReduceEffectsActive = (): boolean => {
+  if (typeof localStorage !== 'undefined') {
+    try {
+      if (localStorage.getItem('deadline_rescue_reduce_effects') === 'true') {
+        return true;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+  return false;
+};
+
 export const AskModal: React.FC<AskModalProps> = ({
   isOpen,
   onClose,
@@ -60,6 +79,7 @@ export const AskModal: React.FC<AskModalProps> = ({
       role: 'assistant',
       text: "Hi! I can help you triage your deadlines, adjust your study hours, or simulate what happens if you delay a task. What's on your mind?",
       source: 'rule-based',
+      hideSourceBadge: true,
       suggestionChips: [
         'Why is this my top task?',
         'I only have 2 hours tonight',
@@ -71,30 +91,56 @@ export const AskModal: React.FC<AskModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [offeredTaskIds, setOfferedTaskIds] = useState<string[]>([]);
   const [healthStatus, setHealthStatus] = useState<string | null>(null);
-  const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+  const [connectionState, setConnectionState] = useState<ConnectionState>('checking');
+  const [aiModel, setAiModel] = useState<string>('gemini-3.5-flash-lite');
+  const hasProbedOnMount = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleCheckAiStatus = async () => {
-    setIsCheckingHealth(true);
+  const probeHealth = async (showStatusStrip = false) => {
+    setConnectionState('checking');
     try {
-      const res = await fetch('/api/health');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch('/api/health', { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (!res.ok) {
-        setHealthStatus(`Server responded with HTTP ${res.status}`);
+        setConnectionState('degraded');
+        if (showStatusStrip) {
+          setHealthStatus(`Server responded with HTTP ${res.status}`);
+        }
         return;
       }
       const data = await res.json();
+      const model = data.model || 'gemini-3.5-flash-lite';
+      setAiModel(model);
       if (data.hasKey) {
-        setHealthStatus(`AI key found, model ${data.model || 'gemini-3.5-flash-lite'}`);
+        setConnectionState('ready');
+        if (showStatusStrip) {
+          setHealthStatus(`AI key found, model ${model}`);
+        }
       } else {
-        setHealthStatus('No AI key set on the server');
+        setConnectionState('no_key');
+        if (showStatusStrip) {
+          setHealthStatus('No AI key set on the server');
+        }
       }
     } catch {
-      setHealthStatus('Could not reach the server');
-    } finally {
-      setIsCheckingHealth(false);
+      setConnectionState('degraded');
+      if (showStatusStrip) {
+        setHealthStatus('Could not reach the server');
+      }
     }
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      if (!hasProbedOnMount.current || connectionState === 'degraded') {
+        hasProbedOnMount.current = true;
+        probeHealth(false);
+      }
+    }
+  }, [isOpen]);
 
   const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
     messagesEndRef.current?.scrollIntoView({ behavior });
@@ -186,6 +232,9 @@ export const AskModal: React.FC<AskModalProps> = ({
 
       if (answer.source === 'gemini') {
         setHealthStatus(null);
+        setConnectionState('ready');
+      } else if (answer.fallbackReason === 'server_error') {
+        setConnectionState('degraded');
       }
 
       const assistantMsg: ChatMessage = {
@@ -204,6 +253,7 @@ export const AskModal: React.FC<AskModalProps> = ({
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch {
+      setConnectionState('degraded');
       setMessages((prev) => [
         ...prev,
         {
@@ -266,44 +316,99 @@ export const AskModal: React.FC<AskModalProps> = ({
       );
     }
 
-    let label = 'Offline mode (limited)';
-    let tooltip = 'Offline mode: running with local rule engine';
+    let label = 'Local answer';
+    let tooltip =
+      'Answered by the on-device rule engine — AI answers resume automatically when the service reconnects.';
 
     if (reason === 'no_key') {
-      label = 'Offline mode — no AI key';
-      tooltip = 'Offline mode: GEMINI_API_KEY is not configured';
+      label = 'Local answer';
+      tooltip = 'Connect GEMINI_API_KEY on the server for conversational answers.';
     } else if (
       reason === 'server_error' ||
-      reason === 'model_unavailable' ||
       reason === 'rate_limited' ||
-      reason === 'error'
+      (reason as string) === 'rate_limit' ||
+      (reason as string) === 'timeout'
     ) {
       label = 'Reconnecting…';
       tooltip =
-        reason === 'server_error'
-          ? 'Offline mode: server error encountered'
-          : reason === 'rate_limited'
-          ? 'Offline mode: AI rate limit reached'
-          : 'Offline mode: AI service temporarily unavailable';
+        'Using local rule engine while the server recovers. Gemini will take over automatically.';
     }
 
     return (
-      <div className="flex items-center space-x-1.5">
-        <span
-          title={tooltip}
-          className="text-[10px] px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-zinc-400 cursor-help"
-        >
-          {label}
-        </span>
+      <span
+        title={tooltip}
+        className="text-[10px] px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-zinc-400 cursor-help"
+      >
+        {label}
+      </span>
+    );
+  };
+
+  const renderConnectionPill = () => {
+    const reduceEffects = isReduceEffectsActive();
+
+    if (isLoading) {
+      return (
         <button
           type="button"
-          onClick={handleCheckAiStatus}
-          disabled={isCheckingHealth}
-          className="text-[10px] text-orange-400 hover:text-orange-300 underline cursor-pointer disabled:opacity-50"
+          role="button"
+          aria-label="Check AI status"
+          onClick={() => probeHealth(true)}
+          className="shrink-0 inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full border border-orange-500/30 bg-orange-950/40 text-orange-300 text-[11px] font-medium transition-colors hover:bg-orange-950/60 cursor-pointer"
         >
-          {isCheckingHealth ? 'Checking...' : 'Check AI status'}
+          <span
+            className={`w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0 ${
+              !reduceEffects ? 'animate-pulse motion-reduce:animate-none' : ''
+            }`}
+          />
+          <span>Thinking…</span>
         </button>
-      </div>
+      );
+    }
+
+    let dotColor = 'bg-emerald-400';
+    let pillStyle = 'border-emerald-500/30 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-950/60';
+    let labelNode: React.ReactNode = (
+      <>
+        <span className="sm:hidden">AI ready</span>
+        <span className="hidden sm:inline">AI ready · {aiModel}</span>
+      </>
+    );
+
+    if (connectionState === 'checking') {
+      dotColor = 'bg-amber-400';
+      pillStyle = 'border-amber-500/30 bg-amber-950/40 text-amber-300 hover:bg-amber-950/60';
+      labelNode = 'Checking…';
+    } else if (connectionState === 'degraded') {
+      dotColor = 'bg-amber-400';
+      pillStyle = 'border-amber-500/30 bg-amber-950/40 text-amber-300 hover:bg-amber-950/60';
+      labelNode = 'Reconnecting…';
+    } else if (connectionState === 'no_key') {
+      dotColor = 'bg-zinc-400';
+      pillStyle = 'border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10';
+      labelNode = (
+        <>
+          <span className="sm:hidden">Local mode</span>
+          <span className="hidden sm:inline">Local mode — no AI key</span>
+        </>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        role="button"
+        aria-label="Check AI status"
+        onClick={() => probeHealth(true)}
+        className={`shrink-0 inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full border text-[11px] font-medium transition-colors cursor-pointer ${pillStyle}`}
+      >
+        <span
+          className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor} ${
+            connectionState === 'checking' && !reduceEffects ? 'animate-pulse motion-reduce:animate-none' : ''
+          }`}
+        />
+        <span>{labelNode}</span>
+      </button>
     );
   };
 
@@ -316,23 +421,39 @@ export const AskModal: React.FC<AskModalProps> = ({
     >
       <div className="font-sans flex flex-col h-[75vh] max-h-[620px]">
         {/* Header */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-zinc-950/40">
-          <div className="flex items-center space-x-2 text-orange-400">
-            <Sparkles className="w-4 h-4" />
-            <h2 className="text-base font-semibold text-white">
+        <div className="p-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-zinc-950/40 gap-2">
+          <div className="flex items-center space-x-2 text-orange-400 min-w-0">
+            <Sparkles className="w-4 h-4 shrink-0" />
+            <h2 className="text-sm sm:text-base font-semibold text-white truncate">
               Ask about your schedule
             </h2>
+            {renderConnectionPill()}
           </div>
 
           <button
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+            className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* AI Health Status on-demand strip */}
+        {healthStatus && (
+          <div className="mx-4 mt-3 text-[11px] text-zinc-300 bg-black/60 border border-white/10 px-3 py-2 rounded-xl flex items-center justify-between font-sans shrink-0 animate-fade-in">
+            <span>{healthStatus}</span>
+            <button
+              type="button"
+              onClick={() => setHealthStatus(null)}
+              aria-label="Dismiss status message"
+              className="text-zinc-400 hover:text-white text-xs ml-2 cursor-pointer p-0.5"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {/* Scrollable Conversation Thread */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
@@ -357,23 +478,8 @@ export const AskModal: React.FC<AskModalProps> = ({
                       <Sparkles className="w-3 h-3 text-orange-400" />
                       <span>Rescue</span>
                     </span>
-                    {renderSourceBadge(msg.source, msg.fallbackReason)}
+                    {!msg.hideSourceBadge && renderSourceBadge(msg.source, msg.fallbackReason)}
                   </div>
-
-                  {/* AI Health Status feedback */}
-                  {healthStatus && (
-                    <div className="text-[11px] text-zinc-300 bg-black/40 border border-white/10 px-2.5 py-1.5 rounded-lg flex items-center justify-between font-sans">
-                      <span>{healthStatus}</span>
-                      <button
-                        type="button"
-                        onClick={() => setHealthStatus(null)}
-                        aria-label="Dismiss status message"
-                        className="text-zinc-500 hover:text-zinc-300 text-xs ml-2 cursor-pointer"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
 
                   {/* Message Text */}
                   <p className="leading-relaxed text-zinc-100 text-sm font-sans whitespace-pre-line">
