@@ -1,8 +1,9 @@
 import React from 'react';
-import { Task, CapacitySettings } from '../types';
+import { Task, CapacitySettings, TaskCategory } from '../types';
 import { getUrgencyInfo } from '../utils/date';
 import { calculateDailyLoads } from '../utils/capacity';
 import { getStarterStartsThisWeek } from '../utils/starterStats';
+import { CategoryCalibration } from '../utils/calibration';
 
 interface DashboardStatsProps {
   tasks: Task[];
@@ -11,6 +12,8 @@ interface DashboardStatsProps {
   onOpenCapacitySettings?: () => void;
   onOpenTriageModal?: () => void;
   onOpenResetWeek?: () => void;
+  calibrations?: Record<TaskCategory, CategoryCalibration | null> | null;
+  onResetCalibration?: (category?: TaskCategory) => void;
 }
 
 export const DashboardStats: React.FC<DashboardStatsProps> = ({
@@ -20,6 +23,8 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
   onOpenCapacitySettings,
   onOpenTriageModal,
   onOpenResetWeek,
+  calibrations,
+  onResetCalibration,
 }) => {
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.completed).length;
@@ -238,6 +243,49 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Your Estimate Accuracy Card */}
+      {(() => {
+        const activeCalibrations = (Object.keys(calibrations || {}) as TaskCategory[])
+          .map((cat) => calibrations?.[cat])
+          .filter((c): c is CategoryCalibration => Boolean(c && c.sampleCount >= 3 && c.ratio > 0));
+
+        if (activeCalibrations.length === 0) return null;
+
+        return (
+          <div className="border border-white/10 bg-zinc-950/70 p-4 font-mono text-xs space-y-2.5">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-zinc-400 border-b border-white/10 pb-1.5">
+              <span className="text-orange-400 font-bold">[ YOUR ESTIMATE ACCURACY ]</span>
+              <span>CALIBRATED FORECASTS</span>
+            </div>
+            <div className="space-y-2 pt-1">
+              {activeCalibrations.map((cal) => (
+                <div
+                  key={cal.category}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between text-zinc-300 text-[11px] gap-1"
+                >
+                  <span>
+                    <strong className="text-white capitalize">{cal.category}s:</strong> usually take{' '}
+                    <strong className="text-orange-400 font-semibold">{cal.ratio}x</strong> your estimate (based on {cal.sampleCount} completed {cal.category}s).
+                  </span>
+                  <span className="text-zinc-500 text-[10px]">Plans auto-calibrated</span>
+                </div>
+              ))}
+            </div>
+            {onResetCalibration && (
+              <div className="pt-1.5 border-t border-white/5 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => onResetCalibration()}
+                  className="text-[10px] text-zinc-400 hover:text-orange-400 transition-colors uppercase tracking-wider cursor-pointer"
+                >
+                  [Reset calibration &rarr;]
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {starterStartsThisWeek > 0 && (
         <div className="pt-1 px-1 font-mono text-xs text-zinc-400">

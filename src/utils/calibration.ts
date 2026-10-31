@@ -2,6 +2,7 @@ import { Task, TaskCategory, StopwatchSession } from '../types';
 import { getTaskLoggedHours } from './stopwatchIntegration';
 
 export const MIN_CALIBRATION_SAMPLES = 3;
+export const CALIBRATION_EXCLUSIONS_KEY = 'deadline_rescue_calibration_exclusions';
 
 export interface CategoryCalibration {
   category: TaskCategory;
@@ -19,7 +20,7 @@ export interface CalibrationSuggestion {
   reason: string;
 }
 
-const CATEGORY_LABELS: Record<TaskCategory, string> = {
+export const CATEGORY_LABELS: Record<TaskCategory, string> = {
   assignment: 'Assignments',
   exam: 'Exams',
   project: 'Projects',
@@ -30,13 +31,85 @@ const CATEGORY_LABELS: Record<TaskCategory, string> = {
 };
 
 /**
+ * Retrieves the list of categories currently excluded from auto-calibration.
+ */
+export function getCalibrationExclusions(): TaskCategory[] {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(CALIBRATION_EXCLUSIONS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as TaskCategory[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Persists the list of categories excluded from calibration.
+ */
+export function setCalibrationExclusions(exclusions: TaskCategory[]): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(CALIBRATION_EXCLUSIONS_KEY, JSON.stringify(exclusions));
+  } catch (e) {
+    console.warn('Failed to save calibration exclusions:', e);
+  }
+}
+
+/**
+ * Resets calibration by adding category/categories to exclusions in localStorage.
+ * If category is omitted, resets all supported categories.
+ */
+export function resetCalibration(category?: TaskCategory): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    if (category) {
+      const existing = getCalibrationExclusions();
+      if (!existing.includes(category)) {
+        setCalibrationExclusions([...existing, category]);
+      }
+    } else {
+      const allCategories: TaskCategory[] = [
+        'assignment',
+        'exam',
+        'project',
+        'reading',
+        'quiz',
+        'lab',
+        'other',
+      ];
+      setCalibrationExclusions(allCategories);
+    }
+  } catch (e) {
+    console.warn('Failed to reset calibration:', e);
+  }
+}
+
+/**
+ * Clears calibration exclusions (restores learning).
+ */
+export function clearCalibrationExclusions(): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.removeItem(CALIBRATION_EXCLUSIONS_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+/**
  * Computes calibration metrics for completed tasks that have tracked stopwatch time.
  * Requires at least MIN_CALIBRATION_SAMPLES (3) completed tasks per category.
+ * Skips categories that are excluded via deadline_rescue_calibration_exclusions.
  */
 export function getCategoryCalibrations(
   tasks: Task[],
-  sessions: StopwatchSession[]
+  sessions: StopwatchSession[],
+  exclusions?: TaskCategory[]
 ): Record<TaskCategory, CategoryCalibration | null> {
+  const activeExclusions = exclusions ?? getCalibrationExclusions();
+
   const result: Record<TaskCategory, CategoryCalibration | null> = {
     assignment: null,
     exam: null,
@@ -64,6 +137,9 @@ export function getCategoryCalibrations(
     const loggedHours = getTaskLoggedHours(task.id, sessions);
     if (loggedHours > 0) {
       const cat = task.category || 'assignment';
+      if (activeExclusions.includes(cat)) {
+        continue;
+      }
       if (categorySamples[cat]) {
         categorySamples[cat].push({
           estimated: task.estimatedHours,
@@ -75,6 +151,9 @@ export function getCategoryCalibrations(
 
   // Calculate ratio for categories with >= MIN_CALIBRATION_SAMPLES
   (Object.keys(categorySamples) as TaskCategory[]).forEach((cat) => {
+    if (activeExclusions.includes(cat)) {
+      return;
+    }
     const samples = categorySamples[cat];
     if (samples && samples.length >= MIN_CALIBRATION_SAMPLES) {
       const totalEstimated = samples.reduce((sum, s) => sum + s.estimated, 0);

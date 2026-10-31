@@ -1,5 +1,6 @@
-import { Task, CapacitySettings, DailyLoadMetric } from '../types';
+import { Task, CapacitySettings, DailyLoadMetric, TaskCategory } from '../types';
 import { calculateDailyLoads } from './capacity';
+import { CategoryCalibration } from './calibration';
 
 export interface DelaySimulationResult {
   simulatedLoads: DailyLoadMetric[];
@@ -25,9 +26,10 @@ export function simulateTaskDelay(
   delayDays: number,
   allTasks: Task[],
   settings: CapacitySettings,
-  startDate: Date = new Date()
+  startDate: Date = new Date(),
+  calibrations?: Record<TaskCategory, CategoryCalibration | null> | null
 ): DelaySimulationResult {
-  const originalLoads = calculateDailyLoads(allTasks, settings, startDate, 7);
+  const originalLoads = calculateDailyLoads(allTasks, settings, startDate, 7, calibrations);
 
   // Determine which day the task is originally scheduled for
   const taskDueDate = new Date(task.dueDateTime);
@@ -61,7 +63,7 @@ export function simulateTaskDelay(
     return t;
   });
 
-  const simulatedLoads = calculateDailyLoads(simulatedTasks, settings, startDate, 7);
+  const simulatedLoads = calculateDailyLoads(simulatedTasks, settings, startDate, 7, calibrations);
   const sourceLoadAfter = simulatedLoads[sourceDayIndex];
   const targetLoadAfter = simulatedLoads[targetDayIndex];
 

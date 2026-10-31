@@ -1,4 +1,5 @@
-import { CapacitySettings, DayOfWeek, DailyLoadMetric, Task } from '../types';
+import { CapacitySettings, DayOfWeek, DailyLoadMetric, Task, TaskCategory } from '../types';
+import { CategoryCalibration, MIN_CALIBRATION_SAMPLES } from './calibration';
 
 export const DAY_KEYS: DayOfWeek[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
@@ -127,15 +128,41 @@ export function getAvailableWorkingHours(
 
 /**
  * Computes daily demand vs daily capacity for a sequence of days starting from `startDate`.
+ * Accepts calibrations or options with calibrations and remainingEffortMap.
+ * When calibration exists with >= 3 samples, task remaining effort is multiplied by the category ratio.
  */
 export function calculateDailyLoads(
   tasks: Task[],
   settings: CapacitySettings = DEFAULT_CAPACITY_SETTINGS,
   startDate: Date = new Date(),
-  numDays: number = 7
+  numDays: number = 7,
+  calibrationsOrOptions?:
+    | Record<TaskCategory, CategoryCalibration | null>
+    | null
+    | {
+        calibrations?: Record<TaskCategory, CategoryCalibration | null> | null;
+        remainingEffortMap?: Record<string, number>;
+      },
+  remainingEffortMapParam?: Record<string, number>
 ): DailyLoadMetric[] {
+  let calibrations: Record<TaskCategory, CategoryCalibration | null> | null | undefined = null;
+  let remainingEffortMap: Record<string, number> | undefined = remainingEffortMapParam;
+
+  if (calibrationsOrOptions) {
+    if ('calibrations' in calibrationsOrOptions || 'remainingEffortMap' in calibrationsOrOptions) {
+      const opts = calibrationsOrOptions as {
+        calibrations?: Record<TaskCategory, CategoryCalibration | null> | null;
+        remainingEffortMap?: Record<string, number>;
+      };
+      calibrations = opts.calibrations;
+      remainingEffortMap = opts.remainingEffortMap ?? remainingEffortMapParam;
+    } else {
+      calibrations = calibrationsOrOptions as Record<TaskCategory, CategoryCalibration | null>;
+    }
+  }
+
   const metrics: DailyLoadMetric[] = [];
-  const incompleteTasks = tasks.filter((t) => !t.completed);
+  const incompleteTasks = tasks.filter((t) => !t.completed && !t.dropped);
 
   for (let i = 0; i < numDays; i++) {
     const targetDate = new Date(startDate);
@@ -160,7 +187,18 @@ export function calculateDailyLoads(
       return dueDate >= targetDate && dueDate < nextDate;
     });
 
-    const demandHours = tasksDueThisDay.reduce((sum, t) => sum + t.estimatedHours, 0);
+    const demandHours = tasksDueThisDay.reduce((sum, t) => {
+      const baseEffort =
+        remainingEffortMap && remainingEffortMap[t.id] !== undefined
+          ? remainingEffortMap[t.id]
+          : t.estimatedHours;
+      const cal = calibrations && t.category ? calibrations[t.category] : null;
+      if (cal && cal.sampleCount >= MIN_CALIBRATION_SAMPLES && cal.ratio > 0) {
+        return sum + baseEffort * cal.ratio;
+      }
+      return sum + baseEffort;
+    }, 0);
+
     const remainingCapacity = Math.max(0, Math.round((capacityHours - demandHours) * 10) / 10);
 
     let status: 'clear' | 'filling' | 'overloaded';

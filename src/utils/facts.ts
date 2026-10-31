@@ -1,8 +1,9 @@
-import { Task, CapacitySettings, StopwatchSession } from '../types';
+import { Task, CapacitySettings, StopwatchSession, TaskCategory } from '../types';
 import { getSmartRecommendations } from './ranking';
 import { calculateDailyLoads, getAvailableWorkingHours } from './capacity';
 import { formatRelativeTime } from './date';
 import { getTaskLoggedHours } from './stopwatchIntegration';
+import { getCategoryCalibrations, CategoryCalibration } from './calibration';
 
 export interface TaskSummaryFact {
   id: string;
@@ -72,10 +73,17 @@ export function buildAppFacts(
   capacitySettings: CapacitySettings,
   now: Date = new Date(),
   remainingEffortMap?: Record<string, number>,
-  stopwatchSessions?: StopwatchSession[]
+  stopwatchSessions?: StopwatchSession[],
+  calibrationsParam?: Record<TaskCategory, CategoryCalibration | null> | null
 ): AppFacts {
   const sessions = Array.isArray(stopwatchSessions) ? stopwatchSessions : [];
   const incomplete = tasks.filter((t) => !t.completed && !t.dropped);
+  const calibrations =
+    calibrationsParam !== undefined
+      ? calibrationsParam
+      : sessions.length > 0
+      ? getCategoryCalibrations(tasks, sessions)
+      : null;
 
   const { topRecommendation, rankedQueue, catchUpQueue } = getSmartRecommendations(
     tasks,
@@ -84,7 +92,10 @@ export function buildAppFacts(
     capacitySettings
   );
 
-  const dailyLoads = calculateDailyLoads(incomplete, capacitySettings, now, 7);
+  const dailyLoads = calculateDailyLoads(incomplete, capacitySettings, now, 7, {
+    calibrations,
+    remainingEffortMap,
+  });
   const todayLoad = dailyLoads[0] || { demandHours: 0, capacityHours: 4 };
 
   const todayDemand = Math.round(todayLoad.demandHours * 10) / 10;

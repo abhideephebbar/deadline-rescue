@@ -27,7 +27,7 @@ import { useTasks } from './hooks/useTasks';
 import { useCapacity } from './hooks/useCapacity';
 import { useStopwatch } from './hooks/useStopwatch';
 import { getRemainingEffortMap, getTaskLoggedHours } from './utils/stopwatchIntegration';
-import { getCategoryCalibrations } from './utils/calibration';
+import { getCategoryCalibrations, resetCalibration } from './utils/calibration';
 import { getSmartRecommendations } from './utils/ranking';
 import { buildAppFacts } from './utils/facts';
 import { GreetingActionType } from './utils/greeting';
@@ -135,10 +135,18 @@ export function App() {
   );
 
   // Calibrate per-category estimate accuracy from completed tasks with logged sessions
+  const [calibrationVersion, setCalibrationVersion] = useState(0);
+
   const calibrations = useMemo(
     () => getCategoryCalibrations(displayTasks, stopwatch.savedSessions),
-    [displayTasks, stopwatch.savedSessions]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [displayTasks, stopwatch.savedSessions, calibrationVersion]
   );
+
+  const handleResetCalibration = (category?: TaskCategory) => {
+    resetCalibration(category);
+    setCalibrationVersion((v) => v + 1);
+  };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCapacityModalOpen, setIsCapacityModalOpen] = useState(false);
@@ -588,6 +596,7 @@ export function App() {
                     now={currentTime}
                     initialDayIndex={focusWeekDayIndex}
                     attendanceSubjects={attendanceSubjects}
+                    calibrations={calibrations}
                     onUpdateTaskDueDate={(taskId, newDueDate) => {
                       updateTask(taskId, { dueDateTime: newDueDate });
                     }}
@@ -713,6 +722,8 @@ export function App() {
             onResetDefaults={resetCapacityDefaults}
             tasks={tasks}
             now={currentTime}
+            calibrations={calibrations}
+            onResetCalibration={handleResetCalibration}
           />
 
           <TriageModal

@@ -3,6 +3,7 @@ import { X, Clock, RotateCcw, Plus, Trash2 } from 'lucide-react';
 import { CapacitySettings, DayOfWeek, Task, BlockedTimeSlot, TaskCategory } from '../types';
 import { calculateDailyLoads } from '../utils/capacity';
 import { getCategoryDefaults, saveCategoryDefaults, resetCategoryDefaults } from '../utils/categoryDefaults';
+import { CategoryCalibration } from '../utils/calibration';
 import { Modal } from './ui/Modal';
 
 interface CapacitySettingsModalProps {
@@ -15,6 +16,8 @@ interface CapacitySettingsModalProps {
   onResetDefaults: () => void;
   tasks: Task[];
   now?: Date;
+  calibrations?: Record<TaskCategory, CategoryCalibration | null> | null;
+  onResetCalibration?: (category?: TaskCategory) => void;
 }
 
 const DAYS_ORDER: { key: DayOfWeek; label: string }[] = [
@@ -37,6 +40,8 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
   onResetDefaults,
   tasks,
   now = new Date(),
+  calibrations,
+  onResetCalibration,
 }) => {
   const [isAddingBlock, setIsAddingBlock] = useState(false);
   const [newLabel, setNewLabel] = useState('');
@@ -365,6 +370,58 @@ export const CapacitySettingsModal: React.FC<CapacitySettingsModalProps> = ({
             ))}
           </div>
         </div>
+
+        {/* Your Estimate Accuracy */}
+        {(() => {
+          const activeCalibrations = (Object.keys(calibrations || {}) as TaskCategory[])
+            .map((cat) => calibrations?.[cat])
+            .filter((c): c is CategoryCalibration => Boolean(c && c.sampleCount >= 3 && c.ratio > 0));
+
+          if (activeCalibrations.length === 0) return null;
+
+          return (
+            <div className="space-y-3 pt-2 border-t border-white/10">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <div>
+                  <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
+                    Your estimate accuracy
+                  </h3>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    We calibrated your plans from completed study stopwatch sessions.
+                  </p>
+                </div>
+                {onResetCalibration && (
+                  <button
+                    type="button"
+                    onClick={() => onResetCalibration()}
+                    className="text-xs text-zinc-400 hover:text-orange-400 transition-colors underline self-start sm:self-auto cursor-pointer"
+                  >
+                    Reset calibration
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {activeCalibrations.map((cal) => (
+                  <div
+                    key={cal.category}
+                    className="p-3 rounded-xl border border-white/10 bg-black/40 flex items-center justify-between text-xs"
+                  >
+                    <div>
+                      <span className="font-semibold text-white capitalize">{cal.category}s</span>
+                      <p className="text-zinc-400 text-[11px] mt-0.5">
+                        Usually take <span className="text-orange-400 font-semibold">{cal.ratio}x</span> your estimate (based on {cal.sampleCount} completed {cal.category}s).
+                      </p>
+                    </div>
+                    <span className="px-2 py-0.5 text-[10px] rounded bg-white/10 text-zinc-300 font-mono shrink-0 ml-2">
+                      Calibrated
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Modal Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-white/10 gap-3">

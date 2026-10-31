@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Calendar, Check, Sparkles, ArrowRight, Clock, GraduationCap } from 'lucide-react';
-import { Task, CapacitySettings, SubjectAttendance } from '../types';
+import { Task, CapacitySettings, SubjectAttendance, TaskCategory } from '../types';
 import { calculateDailyLoads } from '../utils/capacity';
 import { simulateTaskDelay } from '../utils/forecast';
 import { calculateAttendanceStats, sortSubjectsByRisk } from '../utils/attendanceMath';
+import { CategoryCalibration } from '../utils/calibration';
 import { Glass } from './ui/Glass';
 import { Collapse } from './ui/Collapse';
 
@@ -15,6 +16,7 @@ interface WeekForecastViewProps {
   onOpenCapacitySettings?: () => void;
   initialDayIndex?: number | null;
   attendanceSubjects?: SubjectAttendance[];
+  calibrations?: Record<TaskCategory, CategoryCalibration | null> | null;
 }
 
 export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
@@ -25,6 +27,7 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
   onOpenCapacitySettings,
   initialDayIndex,
   attendanceSubjects,
+  calibrations,
 }) => {
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(initialDayIndex ?? 0);
   const [simulatedTaskId, setSimulatedTaskId] = useState<string | null>(null);
@@ -35,7 +38,7 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
   useEffect(() => {
     if (typeof initialDayIndex === 'number') {
       setSelectedDayIndex(initialDayIndex);
-      const loads = calculateDailyLoads(tasks, capacitySettings, now, 7);
+      const loads = calculateDailyLoads(tasks, capacitySettings, now, 7, calibrations);
       const day = loads[initialDayIndex];
       if (day) {
         const dayTasks = tasks.filter((t) => !t.completed && !t.dropped && day.taskIds.includes(t.id));
@@ -47,15 +50,15 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
         detailsRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 50);
     }
-  }, [initialDayIndex]);
+  }, [initialDayIndex, calibrations]);
 
-  const baseLoads = calculateDailyLoads(tasks, capacitySettings, now, 7);
+  const baseLoads = calculateDailyLoads(tasks, capacitySettings, now, 7, calibrations);
   const incompleteTasks = tasks.filter((t) => !t.completed && !t.dropped);
   const taskToSimulate = incompleteTasks.find((t) => t.id === simulatedTaskId) || null;
 
   // Compute live simulation if a task is selected
   const simulation = taskToSimulate
-    ? simulateTaskDelay(taskToSimulate, delayDays, tasks, capacitySettings, now)
+    ? simulateTaskDelay(taskToSimulate, delayDays, tasks, capacitySettings, now, calibrations)
     : null;
 
   // Use simulated loads if simulation is active, otherwise base loads
@@ -292,6 +295,14 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
               <div className="space-y-2.5">
                 {tasksDrivingSelectedDay.map((task) => {
                   const isSimulated = simulatedTaskId === task.id;
+                  const cal = calibrations && task.category ? calibrations[task.category] : null;
+                  const isCalibrated = Boolean(
+                    cal && cal.sampleCount >= 3 && cal.ratio > 0 && Math.abs(cal.ratio - 1.0) >= 0.05
+                  );
+                  const calibratedHours = isCalibrated
+                    ? Math.round(task.estimatedHours * cal!.ratio * 10) / 10
+                    : task.estimatedHours;
+
                   return (
                     <div
                       key={task.id}
@@ -310,10 +321,22 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
                             {task.title}
                           </span>
                         </div>
-                        <div className="text-xs text-zinc-400 mt-1 flex items-center space-x-3">
+                        <div className="text-xs text-zinc-400 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                           <span className="flex items-center space-x-1">
                             <Clock className="w-3.5 h-3.5 text-zinc-400" />
-                            <span>{task.estimatedHours}h effort</span>
+                            {isCalibrated && calibratedHours !== task.estimatedHours ? (
+                              <span>
+                                {task.estimatedHours}h{' '}
+                                <span className="text-orange-400 font-medium">
+                                  &rarr; {calibratedHours}h
+                                </span>{' '}
+                                <span className="text-zinc-500 font-normal">
+                                  — your {task.category}s run {cal!.ratio > 1 ? 'long' : 'fast'}
+                                </span>
+                              </span>
+                            ) : (
+                              <span>{task.estimatedHours}h effort</span>
+                            )}
                           </span>
                           <span>•</span>
                           <span className="capitalize">{task.priority} priority</span>
