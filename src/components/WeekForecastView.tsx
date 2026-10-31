@@ -85,7 +85,10 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
           <p className="text-sm text-zinc-300 mt-1 max-w-xl">
             {total7DayDemand}h planned against {total7DayCapacity}h study capacity this week.
             {overloadedDaysCount > 0 ? (
-              <span className="text-orange-400 font-medium"> {overloadedDaysCount} day{overloadedDaysCount > 1 ? 's' : ''} exceed planned hours.</span>
+              <span className="text-orange-400 font-medium">
+                {' '}
+                {overloadedDaysCount} day{overloadedDaysCount > 1 ? 's' : ''} {overloadedDaysCount === 1 ? 'exceeds' : 'exceed'} planned hours.
+              </span>
             ) : (
               <span className="text-emerald-400 font-medium"> Workload looks balanced across all 7 days.</span>
             )}
