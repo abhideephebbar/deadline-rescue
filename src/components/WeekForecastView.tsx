@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Calendar, Check, Sparkles, ArrowRight, Clock } from 'lucide-react';
 import { Task, CapacitySettings } from '../types';
 import { calculateDailyLoads } from '../utils/capacity';
@@ -25,6 +25,7 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
   const [simulatedTaskId, setSimulatedTaskId] = useState<string | null>(null);
   const [delayDays, setDelayDays] = useState<number>(1);
   const [applySuccessMessage, setApplySuccessMessage] = useState<string | null>(null);
+  const detailsRef = useRef<HTMLDivElement>(null);
 
   const baseLoads = calculateDailyLoads(tasks, capacitySettings, now, 7);
   const incompleteTasks = tasks.filter((t) => !t.completed && !t.dropped);
@@ -74,8 +75,23 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
     }, 2500);
   };
 
+  const handleOverloadClick = () => {
+    const firstOverloadedIdx = displayLoads.findIndex((d) => d.status === 'overloaded');
+    if (firstOverloadedIdx >= 0) {
+      setSelectedDayIndex(firstOverloadedIdx);
+      const day = displayLoads[firstOverloadedIdx];
+      const driving = incompleteTasks.filter((t) => day.taskIds.includes(t.id));
+      if (driving.length > 0) {
+        setSimulatedTaskId(driving[0].id);
+      }
+      setTimeout(() => {
+        detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
+  };
+
   return (
-    <div className="space-y-6 sm:space-y-8 font-sans max-w-5xl mx-auto py-2">
+    <div className="space-y-6 sm:space-y-8 font-sans max-w-5xl mx-auto py-2 pb-28 sm:pb-8">
       {/* Title & Overview */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 px-1">
         <div>
@@ -85,10 +101,16 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
           <p className="text-sm text-zinc-300 mt-1 max-w-xl">
             {total7DayDemand}h planned against {total7DayCapacity}h study capacity this week.
             {overloadedDaysCount > 0 ? (
-              <span className="text-orange-400 font-medium">
+              <button
+                type="button"
+                onClick={handleOverloadClick}
+                className="text-orange-400 font-medium hover:text-orange-300 underline underline-offset-4 decoration-orange-400/40 text-left cursor-pointer inline transition-colors"
+                title="Tap to highlight overloaded day and move tasks"
+              >
                 {' '}
-                {overloadedDaysCount} day{overloadedDaysCount > 1 ? 's' : ''} {overloadedDaysCount === 1 ? 'exceeds' : 'exceed'} planned hours.
-              </span>
+                {overloadedDaysCount} day{overloadedDaysCount > 1 ? 's' : ''}{' '}
+                {overloadedDaysCount === 1 ? 'exceeds' : 'exceed'} planned hours.
+              </button>
             ) : (
               <span className="text-emerald-400 font-medium"> Workload looks balanced across all 7 days.</span>
             )}
@@ -206,7 +228,7 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
 
         {/* Selected Day Details & Delay Simulator */}
         {selectedDay && (
-          <div className="mt-6 pt-6 border-t border-white/10 space-y-4">
+          <div ref={detailsRef} className="mt-6 pt-6 border-t border-white/10 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2">
               <div className="flex items-center space-x-2">
                 <Calendar className="w-4 h-4 text-orange-400" />

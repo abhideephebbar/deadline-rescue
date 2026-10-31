@@ -138,7 +138,7 @@ export const AllTasksView: React.FC<AllTasksViewProps> = ({
   const courseNames = Object.keys(groupedTasksByCourse).sort();
 
   return (
-    <div className="space-y-6 sm:space-y-8 font-sans max-w-5xl mx-auto py-2">
+    <div className="space-y-6 sm:space-y-8 font-sans max-w-5xl mx-auto py-2 pb-28 sm:pb-8">
       {/* Header Row */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 px-1">
         <div>

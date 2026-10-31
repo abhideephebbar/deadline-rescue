@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, AlertCircle, Check, Sparkles } from 'lucide-react';
 import { Task, Priority, TaskCategory } from '../types';
 import { toDateTimeLocalString } from '../utils/date';
@@ -19,6 +19,7 @@ interface TaskFormModalProps {
   }) => void;
   initialTask?: Task | null;
   calibrations?: Record<TaskCategory, CategoryCalibration | null>;
+  existingCourses?: string[];
 }
 
 const COMMON_COURSES = ['CS 350', 'MATH 220', 'ECON 201', 'BIO 112', 'PHYS 140', 'ENG 105', 'CHEM 101'];
@@ -29,9 +30,11 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
   onSubmit,
   initialTask,
   calibrations,
+  existingCourses,
 }) => {
   const [title, setTitle] = useState('');
   const [course, setCourse] = useState('');
+  const courseInputRef = useRef<HTMLInputElement>(null);
   const [dueDateTime, setDueDateTime] = useState('');
   const [estimatedHours, setEstimatedHours] = useState<number | string>(2);
   const [priority, setPriority] = useState<Priority>('medium');
@@ -39,6 +42,32 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
   const [notes, setNotes] = useState('');
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const distinctCourses = useMemo(() => {
+    if (existingCourses && existingCourses.length > 0) {
+      const fromProps = Array.from(
+        new Set(existingCourses.map((c) => c.trim().toUpperCase()).filter((c) => c && c !== 'GENERAL'))
+      );
+      if (fromProps.length > 0) return fromProps;
+    }
+    try {
+      const stored = localStorage.getItem('deadline_rescue_tasks');
+      if (stored) {
+        const parsed: Task[] = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          const fromTasks = Array.from(
+            new Set(parsed.map((t) => t.course?.trim().toUpperCase()).filter((c) => c && c !== 'GENERAL'))
+          );
+          if (fromTasks.length > 0) return fromTasks;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return [];
+  }, [existingCourses, isOpen]);
+
+  const courseChips = distinctCourses.length > 0 ? distinctCourses.slice(0, 6) : COMMON_COURSES.slice(0, 4);
 
   useEffect(() => {
     if (isOpen) {
@@ -183,6 +212,7 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                 Course code
               </label>
               <input
+                ref={courseInputRef}
                 type="text"
                 value={course}
                 onChange={(e) => setCourse(e.target.value)}
@@ -190,17 +220,27 @@ export const TaskFormModal: React.FC<TaskFormModalProps> = ({
                 className="w-full px-3 py-2 bg-black border border-white/15 focus:border-orange-500 rounded-lg text-white text-sm placeholder-zinc-500 focus:outline-none uppercase"
               />
               {/* Quick Course Pills */}
-              <div className="flex flex-wrap gap-1 mt-1.5">
-                {COMMON_COURSES.slice(0, 4).map((c) => (
+              <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                {courseChips.map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setCourse(c)}
-                    className="text-[11px] px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/5 transition-colors"
+                    className="min-h-[28px] text-[11px] px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 transition-colors cursor-pointer"
                   >
                     {c}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCourse('');
+                    courseInputRef.current?.focus();
+                  }}
+                  className="min-h-[28px] text-[11px] px-2 py-0.5 rounded bg-orange-500/10 hover:bg-orange-500/20 text-orange-300 hover:text-orange-200 border border-orange-500/25 transition-colors cursor-pointer"
+                >
+                  + New
+                </button>
               </div>
             </div>
 

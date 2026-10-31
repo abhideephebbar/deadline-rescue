@@ -87,6 +87,10 @@ describe('Date & Urgency Utilities', () => {
     it('formats upcoming days and hours', () => {
       expect(formatRelativeTime(26.0)).toBe('Due in 1d 2h');
       expect(formatRelativeTime(48.0)).toBe('Due in 2 days');
+      // Natural dates: > 48h with targetDate gains weekday
+      const fridayDate = new Date(2026, 9, 30, 16, 0, 0); // Friday Oct 30 2026
+      expect(formatRelativeTime(136.0, fridayDate)).toBe('Due in 5d 16h (Fri)');
+      expect(formatRelativeTime(120.0, fridayDate)).toBe('Due in 5 days (Fri)');
     });
 
     it('formats overdue intervals correctly', () => {

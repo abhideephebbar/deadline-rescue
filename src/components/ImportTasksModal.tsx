@@ -341,51 +341,74 @@ export const ImportTasksModal: React.FC<ImportTasksModalProps> = ({
                         />
                       </div>
 
-                      {/* Effort Hours */}
+                      {/* Effort Hours - tap to cycle */}
                       <div>
                         <label className="text-[10px] text-zinc-400 block mb-0.5">Est. Hours</label>
-                        <input
-                          type="number"
-                          step="0.5"
-                          min="0.5"
-                          max="50"
-                          value={candidate.estimatedHours}
-                          onChange={(e) => handleFieldChange(candidate.id, 'estimatedHours', parseFloat(e.target.value))}
-                          className="w-full p-1.5 rounded bg-black border border-white/15 text-white text-xs font-mono focus:outline-none"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cycle = [0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 8];
+                            const cur = Number(candidate.estimatedHours) || 2;
+                            const idx = cycle.indexOf(cur);
+                            const next = idx >= 0 ? cycle[(idx + 1) % cycle.length] : 2;
+                            handleFieldChange(candidate.id, 'estimatedHours', next);
+                          }}
+                          title="Tap to cycle estimated hours"
+                          className="w-full text-left p-1.5 rounded bg-black/60 border border-white/10 hover:border-white/30 text-white text-xs font-mono border-b border-b-white/40 border-b-dotted flex items-center justify-between cursor-pointer min-h-[34px]"
+                        >
+                          <span>{candidate.estimatedHours}h</span>
+                          <span className="text-[10px] text-zinc-500 font-sans">tap to cycle</span>
+                        </button>
                       </div>
 
-                      {/* Category */}
+                      {/* Category - tap to cycle */}
                       <div>
                         <label className="text-[10px] text-zinc-400 block mb-0.5">Category</label>
-                        <select
-                          value={candidate.category}
-                          onChange={(e) => handleFieldChange(candidate.id, 'category', e.target.value as TaskCategory)}
-                          className="w-full p-1.5 rounded bg-black border border-white/15 text-white text-xs capitalize focus:outline-none"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cycle: TaskCategory[] = ['assignment', 'lab', 'project', 'quiz', 'exam', 'reading', 'other'];
+                            const idx = cycle.indexOf(candidate.category);
+                            const next = idx >= 0 ? cycle[(idx + 1) % cycle.length] : 'assignment';
+                            handleFieldChange(candidate.id, 'category', next);
+                          }}
+                          title="Tap to cycle category"
+                          className="w-full text-left p-1.5 rounded bg-black/60 border border-white/10 hover:border-white/30 text-white text-xs capitalize border-b border-b-white/40 border-b-dotted flex items-center justify-between cursor-pointer min-h-[34px]"
                         >
-                          <option value="assignment">Assignment</option>
-                          <option value="lab">Lab</option>
-                          <option value="project">Project</option>
-                          <option value="exam">Exam</option>
-                          <option value="reading">Reading</option>
-                          <option value="quiz">Quiz</option>
-                          <option value="other">Other</option>
-                        </select>
+                          <span>{candidate.category}</span>
+                          <span className="text-[10px] text-zinc-500">tap to cycle</span>
+                        </button>
                       </div>
 
-                      {/* Priority */}
+                      {/* Priority - tap to cycle */}
                       <div>
                         <label className="text-[10px] text-zinc-400 block mb-0.5">Priority</label>
-                        <select
-                          value={candidate.priority}
-                          onChange={(e) => handleFieldChange(candidate.id, 'priority', e.target.value)}
-                          className="w-full p-1.5 rounded bg-black border border-white/15 text-white text-xs capitalize focus:outline-none"
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cycle = ['low', 'medium', 'high', 'urgent'];
+                            const idx = cycle.indexOf(candidate.priority);
+                            const next = idx >= 0 ? cycle[(idx + 1) % cycle.length] : 'medium';
+                            handleFieldChange(candidate.id, 'priority', next);
+                          }}
+                          title="Tap to cycle priority"
+                          className="w-full text-left p-1.5 rounded bg-black/60 border border-white/10 hover:border-white/30 text-white text-xs capitalize border-b border-b-white/40 border-b-dotted flex items-center justify-between cursor-pointer min-h-[34px]"
                         >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                          <option value="urgent">Urgent</option>
-                        </select>
+                          <span
+                            className={
+                              candidate.priority === 'urgent'
+                                ? 'text-rose-400 font-semibold'
+                                : candidate.priority === 'high'
+                                ? 'text-orange-400 font-medium'
+                                : candidate.priority === 'low'
+                                ? 'text-zinc-400'
+                                : 'text-zinc-200'
+                            }
+                          >
+                            {candidate.priority}
+                          </span>
+                          <span className="text-[10px] text-zinc-500">tap to cycle</span>
+                        </button>
                       </div>
                     </div>
                   </div>

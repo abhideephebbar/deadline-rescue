@@ -28,6 +28,9 @@ import {
   setStoredLastShownId,
   shouldReroll,
   markFirstVisitSeen,
+  buildGreetingSubline,
+  buildGreetingChips,
+  isFirstVisit,
 } from '../utils/greeting';
 import {
   WeatherData,
@@ -119,6 +122,7 @@ export const GreetingHero: React.FC<GreetingHeroProps> = ({
   const [weatherOptIn, setWeatherOptIn] = useState<'on' | 'off' | 'unset'>(() =>
     getStoredWeatherOptIn()
   );
+  const [weatherDeniedNotice, setWeatherDeniedNotice] = useState(false);
   const [weather, setWeather] = useState<WeatherData | null>(() => getCachedWeather());
   const weatherRef = useRef<WeatherData | null>(weather);
   weatherRef.current = weather;
@@ -232,12 +236,14 @@ export const GreetingHero: React.FC<GreetingHeroProps> = ({
         () => {
           setStoredWeatherOptIn('off');
           setWeatherOptIn('off');
+          setWeatherDeniedNotice(true);
         },
         { timeout: 8000 }
       );
     } else {
       setStoredWeatherOptIn('off');
       setWeatherOptIn('off');
+      setWeatherDeniedNotice(true);
     }
   };
 
@@ -357,7 +363,7 @@ export const GreetingHero: React.FC<GreetingHeroProps> = ({
               ))}
             </h1>
 
-            {/* Supportive Subline */}
+            {/* Supportive Subline - dynamically derived from live facts */}
             <m.p
               initial={reduceEffects ? { opacity: 1 } : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -372,10 +378,10 @@ export const GreetingHero: React.FC<GreetingHeroProps> = ({
               }
               className="text-base sm:text-lg text-zinc-400 font-normal leading-relaxed max-w-2xl"
             >
-              {greeting.subline}
+              {buildGreetingSubline(facts)}
             </m.p>
 
-            {/* Action Chips */}
+            {/* Action Chips - dynamically derived from live facts */}
             <m.div
               initial={reduceEffects ? { opacity: 1 } : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -390,26 +396,32 @@ export const GreetingHero: React.FC<GreetingHeroProps> = ({
               }
               className="flex flex-wrap items-center gap-2 pt-1"
             >
-              {greeting.chips.map((chip) => (
+              {buildGreetingChips(facts, isFirstVisit()).map((chip) => (
                 <button
                   key={chip.id}
                   type="button"
                   onClick={() => handleChipClick(chip.action, chip.taskId)}
-                  className="px-4 py-2 rounded-full border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/20 text-zinc-200 hover:text-white text-xs sm:text-sm font-medium transition-all cursor-pointer active:scale-95 text-left"
+                  className="min-h-[44px] inline-flex items-center px-4 py-2 rounded-full border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/20 text-zinc-200 hover:text-white text-xs sm:text-sm font-medium transition-all cursor-pointer active:scale-95 text-left"
                 >
                   {chip.label}
                 </button>
               ))}
 
               {/* Opt-in 'Use my weather' button when unset */}
-              {weatherOptIn === 'unset' && (
+              {weatherOptIn === 'unset' && !weatherDeniedNotice && (
                 <button
                   type="button"
                   onClick={handleOptInWeather}
-                  className="px-3 py-1.5 text-xs text-orange-400/80 hover:text-orange-300 underline underline-offset-4 decoration-orange-400/30 hover:decoration-orange-300 transition-colors cursor-pointer"
+                  className="min-h-[44px] inline-flex items-center px-3 py-1.5 text-xs text-orange-400/80 hover:text-orange-300 underline underline-offset-4 decoration-orange-400/30 hover:decoration-orange-300 transition-colors cursor-pointer"
                 >
                   Use my weather
                 </button>
+              )}
+
+              {weatherDeniedNotice && (
+                <span className="text-xs text-zinc-500 italic py-1.5 min-h-[44px] inline-flex items-center">
+                  Weather off — that's fine.
+                </span>
               )}
             </m.div>
           </m.div>

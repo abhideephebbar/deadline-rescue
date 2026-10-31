@@ -184,6 +184,10 @@ export const AskModal: React.FC<AskModalProps> = ({
         setOfferedTaskIds((prev) => Array.from(new Set([...prev, answer.pendingOffer!.taskId])));
       }
 
+      if (answer.source === 'gemini') {
+        setHealthStatus(null);
+      }
+
       const assistantMsg: ChatMessage = {
         id: 'asst-' + Date.now(),
         role: 'assistant',
@@ -262,17 +266,25 @@ export const AskModal: React.FC<AskModalProps> = ({
       );
     }
 
+    let label = 'Offline mode (limited)';
     let tooltip = 'Offline mode: running with local rule engine';
+
     if (reason === 'no_key') {
+      label = 'Offline mode — no AI key';
       tooltip = 'Offline mode: GEMINI_API_KEY is not configured';
-    } else if (reason === 'server_error') {
-      tooltip = 'Offline mode: server error encountered';
-    } else if (reason === 'model_unavailable') {
-      tooltip = 'Offline mode: AI service temporarily unavailable';
-    } else if (reason === 'rate_limited') {
-      tooltip = 'Offline mode: AI rate limit reached';
-    } else if (reason === 'error') {
-      tooltip = 'Offline mode: an error occurred';
+    } else if (
+      reason === 'server_error' ||
+      reason === 'model_unavailable' ||
+      reason === 'rate_limited' ||
+      reason === 'error'
+    ) {
+      label = 'Reconnecting…';
+      tooltip =
+        reason === 'server_error'
+          ? 'Offline mode: server error encountered'
+          : reason === 'rate_limited'
+          ? 'Offline mode: AI rate limit reached'
+          : 'Offline mode: AI service temporarily unavailable';
     }
 
     return (
@@ -281,7 +293,7 @@ export const AskModal: React.FC<AskModalProps> = ({
           title={tooltip}
           className="text-[10px] px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-zinc-400 cursor-help"
         >
-          Offline mode (limited)
+          {label}
         </span>
         <button
           type="button"

@@ -444,6 +444,10 @@ export function buildGreetingSubline(facts: AppFacts): string {
       facts.catchUpCount === 1 ? '' : 's'
     } that need attention, and ${facts.topTask?.title || 'your top task'} is up next.`;
   }
+  // Forecast-aware: today clear + tomorrow heavy
+  if (facts.today.demandHours === 0 && facts.tomorrow && facts.tomorrow.isHeavy) {
+    return `Today's clear — but tomorrow is heavy (${facts.tomorrow.demandHours}h of work, ${facts.tomorrow.capacityHours}h of capacity). Want to start one thing early?`;
+  }
   if (facts.topTask) {
     return `${facts.topTask.title} is due ${facts.topTask.dueRelative.toLowerCase()}. You have ~${
       facts.today.demandHours

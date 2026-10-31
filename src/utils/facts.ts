@@ -38,12 +38,18 @@ export interface AppFacts {
     deficitHours: number;
     isOnTrack: boolean;
   };
+  tomorrow: {
+    demandHours: number;
+    capacityHours: number;
+    isHeavy: boolean;
+  };
   weekly: {
     demandHours: number;
     capacityHours: number;
     deficitHours: number;
   };
   tasksDue48h: TaskSummaryFact[];
+  tasksDue7d: TaskSummaryFact[];
   catchUpCount: number;
   nextUp: Array<{
     id: string;
@@ -85,6 +91,11 @@ export function buildAppFacts(
   const todayCapacity = Math.round(todayLoad.capacityHours * 10) / 10;
   const todayDeficit = Math.max(0, Math.round((todayDemand - todayCapacity) * 10) / 10);
   const todayOnTrack = todayDemand <= todayCapacity;
+
+  const tomorrowLoad = dailyLoads[1] || { demandHours: 0, capacityHours: 4 };
+  const tomorrowDemand = Math.round(tomorrowLoad.demandHours * 10) / 10;
+  const tomorrowCapacity = Math.round(tomorrowLoad.capacityHours * 10) / 10;
+  const tomorrowIsHeavy = tomorrowDemand > tomorrowCapacity;
 
   const weeklyDemand = Math.round(dailyLoads.reduce((sum, d) => sum + d.demandHours, 0) * 10) / 10;
   const weeklyCapacity = Math.round(dailyLoads.reduce((sum, d) => sum + d.capacityHours, 0) * 10) / 10;
@@ -153,7 +164,34 @@ export function buildAppFacts(
         title: t.title,
         course: t.course,
         dueDateTime: t.dueDateTime,
-        dueRelative: formatRelativeTime(hoursDiff),
+        dueRelative: formatRelativeTime(hoursDiff, new Date(t.dueDateTime)),
+        estimatedHours: t.estimatedHours,
+        remainingEffort: rem,
+        loggedHours: getTaskLoggedHours(t.id, sessions),
+        priority: t.priority,
+        category: t.category,
+        bufferHours: buffer,
+      };
+    });
+
+  // Tasks due later this week (between 48 hours and 7 days)
+  const tasksDue7d: TaskSummaryFact[] = incomplete
+    .filter((t) => {
+      const diffHours = (new Date(t.dueDateTime).getTime() - now.getTime()) / 3600000;
+      return diffHours > 48 && diffHours <= 168;
+    })
+    .map((t) => {
+      const rem = typeof remainingEffortMap?.[t.id] === 'number' ? remainingEffortMap[t.id] : t.estimatedHours;
+      const hoursDiff = Math.round((new Date(t.dueDateTime).getTime() - now.getTime()) / 3600000);
+      const availableHours = getAvailableWorkingHours(now, new Date(t.dueDateTime), capacitySettings);
+      const buffer = Math.round((availableHours - rem) * 10) / 10;
+
+      return {
+        id: t.id,
+        title: t.title,
+        course: t.course,
+        dueDateTime: t.dueDateTime,
+        dueRelative: formatRelativeTime(hoursDiff, new Date(t.dueDateTime)),
         estimatedHours: t.estimatedHours,
         remainingEffort: rem,
         loggedHours: getTaskLoggedHours(t.id, sessions),
@@ -173,7 +211,7 @@ export function buildAppFacts(
       id: t.id,
       title: t.title,
       course: t.course,
-      dueRelative: formatRelativeTime(hoursDiff),
+      dueRelative: formatRelativeTime(hoursDiff, new Date(t.dueDateTime)),
       remainingEffort: rem,
       loggedHours: getTaskLoggedHours(t.id, sessions),
     };
@@ -189,12 +227,18 @@ export function buildAppFacts(
       deficitHours: todayDeficit,
       isOnTrack: todayOnTrack,
     },
+    tomorrow: {
+      demandHours: tomorrowDemand,
+      capacityHours: tomorrowCapacity,
+      isHeavy: tomorrowIsHeavy,
+    },
     weekly: {
       demandHours: weeklyDemand,
       capacityHours: weeklyCapacity,
       deficitHours: weeklyDeficit,
     },
     tasksDue48h,
+    tasksDue7d,
     catchUpCount: catchUpQueue.length,
     nextUp,
     totalActiveCount: incomplete.length,

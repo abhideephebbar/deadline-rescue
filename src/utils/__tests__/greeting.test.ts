@@ -64,12 +64,18 @@ describe('greeting.ts - Claude-style greeting engine', () => {
       deficitHours: 0,
       isOnTrack: true,
     },
+    tomorrow: {
+      demandHours: 4,
+      capacityHours: 4,
+      isHeavy: false,
+    },
     weekly: {
       demandHours: 12,
       capacityHours: 20,
       deficitHours: 0,
     },
     tasksDue48h: [],
+    tasksDue7d: [],
     catchUpCount: 0,
     nextUp: [],
     totalActiveCount: 3,
@@ -496,6 +502,29 @@ describe('greeting.ts - Claude-style greeting engine', () => {
       expect(subline).toContain('Operating Systems Lab 2');
       expect(subline).toContain('due in 6h');
       expect(subline).toContain('4h planned');
+    });
+
+    it('builds forecast-aware subline when today is clear and tomorrow is heavy', () => {
+      const tomorrowHeavyFacts: AppFacts = {
+        ...mockFacts,
+        today: {
+          demandHours: 0,
+          capacityHours: 4,
+          deficitHours: 0,
+          isOnTrack: true,
+        },
+        tomorrow: {
+          demandHours: 7,
+          capacityHours: 4,
+          isHeavy: true,
+        },
+        catchUpCount: 0,
+      };
+
+      const subline = buildGreetingSubline(tomorrowHeavyFacts);
+      expect(subline).toBe(
+        "Today's clear — but tomorrow is heavy (7h of work, 4h of capacity). Want to start one thing early?"
+      );
     });
 
     it('returns first-time chips for new users or zero tasks', () => {

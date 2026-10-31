@@ -54,6 +54,8 @@ describe('buildAppFacts', () => {
     expect(facts.totalActiveCount).toBe(2);
     expect(facts.totalActiveHours).toBe(6);
     expect(facts.tasksDue48h.length).toBe(2);
+    expect(facts.tasksDue7d.length).toBe(0);
+    expect(facts.tomorrow).toBeDefined();
     expect(facts.catchUpCount).toBe(0);
     expect(facts.weekday).toBe('thursday');
     expect(facts.today.capacityHours).toBe(4);

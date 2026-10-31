@@ -80,10 +80,6 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
   const { task, explanation, urgency } = rec;
   const starterStep = getStarterStep(task.category, task.title, task.course);
 
-  // 1-line reason (max 90 chars)
-  const trimmedReason =
-    explanation.length > 90 ? explanation.slice(0, 87).trimEnd() + '...' : explanation;
-
   // Stopwatch state on active task
   const isTimedOnThisTask = stopwatch.selectedTaskId === task.id;
   const timerActive =
@@ -121,12 +117,12 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
       onTouchEnd={handleTouchEnd}
       className="relative rounded-[28px] border border-white/[0.12] bg-[rgba(10,10,14,0.65)] backdrop-blur-[24px] backdrop-saturate-[140%] p-6 sm:p-10 shadow-[0_12px_44px_0_rgba(0,0,0,0.45)] overflow-hidden transition-all duration-300"
     >
-      {/* Background Watermark Course Code */}
+      {/* Background Watermark Course Code (clamped to 12 chars + ellipsis) */}
       <div
         aria-hidden="true"
-        className="absolute right-4 sm:right-10 top-2 sm:top-4 font-['Bebas_Neue'] text-[90px] sm:text-[180px] text-white/[0.04] select-none pointer-events-none leading-none -z-0 tracking-wider"
+        className="absolute right-4 sm:right-10 top-2 sm:top-4 font-['Bebas_Neue'] text-[90px] sm:text-[180px] text-white/[0.04] select-none pointer-events-none leading-none -z-0 tracking-wider truncate max-w-[85%]"
       >
-        {task.course}
+        {task.course.length > 12 ? `${task.course.slice(0, 12)}…` : task.course}
       </div>
 
       <AnimatePresence mode="wait">
@@ -188,9 +184,12 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
             </span>
           </div>
 
-          {/* 1-Line Grounded Reason */}
-          <p className="text-sm text-zinc-300 leading-relaxed max-w-xl line-clamp-1">
-            {trimmedReason}
+          {/* Muted 2-Line Grounded Reason with Tooltip */}
+          <p
+            className="text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-xl line-clamp-2"
+            title={explanation}
+          >
+            <span className="font-medium text-zinc-300">Why this one:</span> {explanation}
           </p>
 
           {/* Actions Row */}
@@ -317,11 +316,11 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
               </div>
             </div>
 
-            {/* Carousel Dots on Bottom Right */}
+            {/* Carousel Dots on Bottom Right with >=44px tap targets */}
             {totalSlides > 1 && (
               <div
                 aria-label="Slide indicators"
-                className="flex items-center space-x-1.5 self-center ml-auto"
+                className="flex items-center -space-x-1 sm:space-x-0.5 self-center ml-auto"
               >
                 {Array.from({ length: totalSlides }).map((_, idx) => {
                   const isActive = idx === currentIndex;
@@ -331,12 +330,16 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
                       type="button"
                       onClick={() => setActiveIndex(idx)}
                       aria-label={`Go to slide ${idx + 1}`}
-                      className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                        isActive
-                          ? 'w-6 bg-white shadow-sm'
-                          : 'w-2 bg-white/20 hover:bg-white/40'
-                      }`}
-                    />
+                      className="min-w-[44px] min-h-[44px] flex items-center justify-center p-2 cursor-pointer"
+                    >
+                      <span
+                        className={`h-2 rounded-full transition-all duration-300 block ${
+                          isActive
+                            ? 'w-6 bg-white shadow-sm'
+                            : 'w-2 bg-white/20 hover:bg-white/40'
+                        }`}
+                      />
+                    </button>
                   );
                 })}
               </div>

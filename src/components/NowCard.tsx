@@ -69,11 +69,6 @@ export const NowCard: React.FC<NowCardProps> = ({
   const { task, explanation, urgency } = recommendation;
   const starterStep = getStarterStep(task.category, task.title, task.course);
 
-  // 1-line reason (max 90 chars)
-  const trimmedReason = explanation.length > 90
-    ? explanation.slice(0, 87).trimEnd() + '...'
-    : explanation;
-
   // Check if stopwatch is actively attached to this task
   const isTimedOnThisTask = stopwatch.selectedTaskId === task.id;
   const timerActive = isTimedOnThisTask && (stopwatch.status === 'running' || stopwatch.status === 'paused');
@@ -128,9 +123,13 @@ export const NowCard: React.FC<NowCardProps> = ({
             {task.title}
           </h2>
 
-          {/* 1-line plain reason */}
-          <p className="text-sm text-zinc-300 leading-snug line-clamp-1">
-            {trimmedReason}
+          {/* Muted 2-line plain reason with tooltip */}
+          <p
+            className="text-xs sm:text-sm text-zinc-400 leading-relaxed line-clamp-2"
+            title={explanation}
+          >
+            <span className="font-medium text-zinc-300">Why this one:</span>{' '}
+            {explanation}
           </p>
         </div>
 

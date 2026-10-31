@@ -68,7 +68,7 @@ export function getUrgencyInfo(
     borderClass,
     hoursRemaining,
     availableWorkingHours,
-    relativeTime: formatRelativeTime(hoursRemaining),
+    relativeTime: formatRelativeTime(hoursRemaining, dueDate),
     formattedDate: formatReadableDate(dueDate),
     isOverdue,
     bufferHours,
@@ -78,8 +78,12 @@ export function getUrgencyInfo(
 
 /**
  * Formats a readable relative time string (e.g. "in 3h 15m", "overdue by 45m")
+ * For deadlines > 48h out, appends the weekday (e.g. "Due in 5d 16h (Fri)").
  */
-export function formatRelativeTime(hoursRemaining: number): string {
+export function formatRelativeTime(
+  hoursRemaining: number,
+  targetDate?: Date | string | null
+): string {
   const isPast = hoursRemaining < 0;
   const absHours = Math.abs(hoursRemaining);
   const totalMinutes = Math.round(absHours * 60);
@@ -99,7 +103,20 @@ export function formatRelativeTime(hoursRemaining: number): string {
 
   const days = Math.floor(hours / 24);
   const remainingHours = hours % 24;
-  const dayText = remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days} day${days === 1 ? '' : 's'}`;
+
+  let weekdaySuffix = '';
+  if (!isPast && hoursRemaining > 48 && targetDate) {
+    const target = typeof targetDate === 'string' ? new Date(targetDate) : targetDate;
+    if (!isNaN(target.getTime())) {
+      const weekday = target.toLocaleDateString('en-US', { weekday: 'short' });
+      weekdaySuffix = ` (${weekday})`;
+    }
+  }
+
+  const dayText =
+    remainingHours > 0
+      ? `${days}d ${remainingHours}h${weekdaySuffix}`
+      : `${days} day${days === 1 ? '' : 's'}${weekdaySuffix}`;
 
   return isPast ? `Overdue by ${dayText}` : `Due in ${dayText}`;
 }

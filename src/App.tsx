@@ -34,7 +34,7 @@ import { isSampleTaskSet, isSampleBannerDismissed, dismissSampleBanner } from '.
 import { generateTourDemoTasks } from './utils/tour';
 import { clearStoredWeather, getStoredWeatherOptIn, setStoredWeatherOptIn } from './utils/weather';
 import { Task, Priority, TaskCategory } from './types';
-import { AlertTriangle, Compass, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Compass, CheckCircle2, ChevronDown } from 'lucide-react';
 import { Glass } from './components/ui/Glass';
 
 export function App() {
@@ -114,6 +114,7 @@ export function App() {
   };
 
   const [isEditingName, setIsEditingName] = useState(false);
+  const [isLaterWeekExpanded, setIsLaterWeekExpanded] = useState(false);
   const [isWeatherActive, setIsWeatherActive] = useState<boolean>(() => {
     return getStoredWeatherOptIn() === 'on';
   });
@@ -472,6 +473,44 @@ export function App() {
                           onStartTask={handleStartNow}
                         />
 
+                        {/* Later this week collapsed glance window */}
+                        {appFacts.tasksDue7d && appFacts.tasksDue7d.length > 0 && (
+                          <div className="px-1 -mt-2 sm:-mt-4">
+                            <button
+                              type="button"
+                              onClick={() => setIsLaterWeekExpanded((prev) => !prev)}
+                              aria-expanded={isLaterWeekExpanded}
+                              className="inline-flex items-center space-x-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors py-1 cursor-pointer"
+                            >
+                              <ChevronDown
+                                className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                                  isLaterWeekExpanded ? 'rotate-180 text-orange-400' : 'text-zinc-500'
+                                }`}
+                              />
+                              <span>Later this week ({appFacts.tasksDue7d.length})</span>
+                            </button>
+
+                            {isLaterWeekExpanded && (
+                              <div className="flex flex-wrap gap-2 pt-2 animate-fade-in">
+                                {appFacts.tasksDue7d.map((task) => {
+                                  const weekday = new Date(task.dueDateTime).toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                  });
+                                  return (
+                                    <span
+                                      key={task.id}
+                                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-xs text-zinc-300"
+                                    >
+                                      <span className="font-medium text-white">{task.title}</span>
+                                      <span className="text-zinc-500 font-mono">({weekday})</span>
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {catchUpTasks.length > 0 && (
                           <TaskRail
                             title="Catch Up"
@@ -558,6 +597,7 @@ export function App() {
             onSubmit={handleModalSubmit}
             initialTask={editingTask}
             calibrations={calibrations}
+            existingCourses={displayTasks.map((t) => t.course)}
           />
 
           <DeleteConfirmModal
