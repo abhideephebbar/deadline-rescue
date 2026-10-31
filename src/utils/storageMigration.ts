@@ -15,6 +15,7 @@ export function clearAllAppData(): void {
   const keysToWipe = [
     TASKS_STORAGE_KEY,
     LEGACY_TASKS_KEY,
+    'deadline_rescue_tasks',
     SESSIONS_STORAGE_KEY,
     ATTENDANCE_STORAGE_KEY,
     'deadline_rescue_stopwatch_state',
