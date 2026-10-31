@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { StopwatchState, StopwatchSession, StoredStopwatchState } from '../types';
 import { formatStopwatchTime } from '../utils/date';
+import { recordCompletedStarterStart } from '../utils/starterStats';
 
 const STORAGE_KEY_STATE = 'deadline_rescue_stopwatch_state_v1';
 const STORAGE_KEY_SESSIONS = 'deadline_rescue_stopwatch_sessions_v1';
+export const STARTER_TARGET_MS = 5 * 60 * 1000; // 5:00 in ms
 
 export function useStopwatch() {
   // 1. Initial State Restoration from localStorage
@@ -76,6 +78,19 @@ export function useStopwatch() {
     return false;
   });
 
+  const [isStarterMode, setIsStarterMode] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_STATE);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return Boolean(parsed.isStarterMode);
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  });
+
   // Saved sessions list
   const [savedSessions, setSavedSessions] = useState<StopwatchSession[]>(() => {
     try {
@@ -115,12 +130,13 @@ export function useStopwatch() {
         selectedTaskId,
         isSaved,
         updatedAt: Date.now(),
+        isStarterMode,
       };
       localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(payload));
     } catch (err) {
       console.error('Error saving stopwatch state to localStorage:', err);
     }
-  }, [status, accumulatedMs, segmentStartTimestamp, selectedTaskId, isSaved]);
+  }, [status, accumulatedMs, segmentStartTimestamp, selectedTaskId, isSaved, isStarterMode]);
 
   // Sync saved sessions to localStorage
   useEffect(() => {
@@ -217,11 +233,32 @@ export function useStopwatch() {
     setSegmentStartTimestamp(null);
     setStatus('stopped');
     setDisplayElapsedMs(finalAccumulated);
+    setIsStarterMode(false);
 
     setTimeout(() => {
       isTransitioningRef.current = false;
     }, 50);
   }, [status, segmentStartTimestamp, accumulatedMs]);
+
+  // START 5-MIN STARTER MODE
+  const startStarterMode = useCallback((taskId?: string) => {
+    if (isTransitioningRef.current) return;
+    if (status !== 'idle' && status !== 'stopped') return;
+
+    isTransitioningRef.current = true;
+    const now = Date.now();
+    setAccumulatedMs(0);
+    setSegmentStartTimestamp(now);
+    setIsSaved(false);
+    setIsStarterMode(true);
+    if (taskId) setSelectedTaskId(taskId);
+    setStatus('running');
+    setDisplayElapsedMs(0);
+
+    setTimeout(() => {
+      isTransitioningRef.current = false;
+    }, 50);
+  }, [status]);
 
   // RESET: Resets state to Idle
   // Note: Confirmation check is performed before calling this or handled by UI
@@ -233,11 +270,42 @@ export function useStopwatch() {
     setAccumulatedMs(0);
     setSegmentStartTimestamp(null);
     setIsSaved(false);
+    setIsStarterMode(false);
     setDisplayElapsedMs(0);
 
     setTimeout(() => {
       isTransitioningRef.current = false;
     }, 50);
+  }, []);
+
+  const remainingStarterMs = isStarterMode ? Math.max(0, STARTER_TARGET_MS - displayElapsedMs) : 0;
+  const isStarterCompleted = isStarterMode && displayElapsedMs >= STARTER_TARGET_MS;
+
+  // Starter Choice 1: "That counts — log it and stop"
+  const completeStarterAndStop = useCallback(
+    (taskDetails?: { id: string; title: string; course: string }) => {
+      recordCompletedStarterStart();
+      const durationMs = Math.max(STARTER_TARGET_MS, displayElapsedMs);
+      const newSession: StopwatchSession = {
+        id: `session-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        durationMs,
+        durationFormatted: formatStopwatchTime(durationMs),
+        taskId: taskDetails?.id || (selectedTaskId || undefined),
+        taskTitle: taskDetails?.title || undefined,
+        taskCourse: taskDetails?.course || undefined,
+        createdAt: new Date().toISOString(),
+      };
+      setSavedSessions((prev) => [newSession, ...prev]);
+      setIsStarterMode(false);
+      resetToIdle();
+    },
+    [displayElapsedMs, selectedTaskId, resetToIdle]
+  );
+
+  // Starter Choice 2: "Keep going" (seamless normal session)
+  const completeStarterKeepGoing = useCallback(() => {
+    recordCompletedStarterStart();
+    setIsStarterMode(false);
   }, []);
 
   // SAVE SESSION: Available only in Stopped and only once per session
@@ -283,17 +351,27 @@ export function useStopwatch() {
     return isToday ? total + session.durationMs : total;
   }, 0);
 
+  const formattedTime = isStarterMode
+    ? formatStopwatchTime(remainingStarterMs)
+    : formatStopwatchTime(displayElapsedMs);
+
   return {
     status,
     displayElapsedMs,
-    formattedTime: formatStopwatchTime(displayElapsedMs),
+    formattedTime,
     isSaved,
     selectedTaskId,
     setSelectedTaskId,
     savedSessions,
     totalTrackedTodayMs,
     totalTrackedTodayFormatted: formatStopwatchTime(totalTrackedTodayMs),
+    isStarterMode,
+    isStarterCompleted,
+    remainingStarterMs,
     start,
+    startStarterMode,
+    completeStarterAndStop,
+    completeStarterKeepGoing,
     pause,
     resume,
     stop,

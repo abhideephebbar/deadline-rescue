@@ -93,6 +93,7 @@ export interface StoredStopwatchState {
   selectedTaskId?: string;
   isSaved: boolean;
   updatedAt: number;
+  isStarterMode?: boolean;
 }
 
 export interface SubjectAttendance {

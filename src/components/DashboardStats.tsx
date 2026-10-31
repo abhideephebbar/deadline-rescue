@@ -2,6 +2,7 @@ import React from 'react';
 import { Task, CapacitySettings } from '../types';
 import { getUrgencyInfo } from '../utils/date';
 import { calculateDailyLoads } from '../utils/capacity';
+import { getStarterStartsThisWeek } from '../utils/starterStats';
 
 interface DashboardStatsProps {
   tasks: Task[];
@@ -24,6 +25,7 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
   const completedTasks = tasks.filter((t) => t.completed).length;
   const activeTasks = totalTasks - completedTasks;
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const starterStartsThisWeek = getStarterStartsThisWeek(now);
 
   // Compute daily load for today
   const dailyLoads = calculateDailyLoads(tasks, capacitySettings, now, 1);
@@ -236,6 +238,12 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
           </div>
         </div>
       </div>
+
+      {starterStartsThisWeek > 0 && (
+        <div className="pt-1 px-1 font-mono text-xs text-zinc-400">
+          You've started {starterStartsThisWeek} {starterStartsThisWeek === 1 ? 'hard thing' : 'hard things'} this week.
+        </div>
+      )}
     </div>
   );
 };
