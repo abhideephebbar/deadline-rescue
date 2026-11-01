@@ -426,6 +426,19 @@ export function App() {
                       }}
                     />
 
+                    {/* Compact Attendance Guard Card Row beneath hero area */}
+                    <AttendanceCardRow
+                      subjects={attendanceSubjects}
+                      onSelectSubject={(subject) => {
+                        setSelectedAttendanceSubject(subject);
+                        setIsAttendanceModalOpen(true);
+                      }}
+                      onAddNewSubject={() => {
+                        setSelectedAttendanceSubject(null);
+                        setIsAttendanceModalOpen(true);
+                      }}
+                    />
+
                     {displayTasks.length === 0 ? (
                       <EmptyState
                         onOpenAddTask={handleOpenAddModal}
@@ -496,19 +509,6 @@ export function App() {
                             />
                           </section>
                         )}
-
-                        {/* Compact Attendance Guard Card Row beneath hero area */}
-                        <AttendanceCardRow
-                          subjects={attendanceSubjects}
-                          onSelectSubject={(subject) => {
-                            setSelectedAttendanceSubject(subject);
-                            setIsAttendanceModalOpen(true);
-                          }}
-                          onAddNewSubject={() => {
-                            setSelectedAttendanceSubject(null);
-                            setIsAttendanceModalOpen(true);
-                          }}
-                        />
 
                         {/* Horizontal Task Rails (Keep going, Due soon, Catch up) */}
                         <TaskRail
