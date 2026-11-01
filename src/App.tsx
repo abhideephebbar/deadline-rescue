@@ -22,6 +22,7 @@ import { ProductTour } from './components/ProductTour';
 import { AskModal } from './components/AskModal';
 import { AttendanceCardRow } from './components/AttendanceCardRow';
 import { AttendanceDetailModal } from './components/AttendanceDetailModal';
+import { WelcomeFlow } from './components/WelcomeFlow';
 import { Modal } from './components/ui/Modal';
 import { useTasks } from './hooks/useTasks';
 import { useCapacity } from './hooks/useCapacity';
@@ -30,7 +31,7 @@ import { getRemainingEffortMap, getTaskLoggedHours } from './utils/stopwatchInte
 import { getCategoryCalibrations, resetCalibration } from './utils/calibration';
 import { getSmartRecommendations } from './utils/ranking';
 import { buildAppFacts } from './utils/facts';
-import { GreetingActionType } from './utils/greeting';
+import { GreetingActionType, isFirstVisit } from './utils/greeting';
 import { getWorkloadMood } from './utils/mood';
 import { isSampleTaskSet, isSampleBannerDismissed, dismissSampleBanner } from './utils/sampleDetection';
 import { generateTourDemoTasks } from './utils/tour';
@@ -165,6 +166,12 @@ export function App() {
   const [attendanceSubjects, setAttendanceSubjects] = useState<SubjectAttendance[]>(() => getStoredAttendance());
   const [selectedAttendanceSubject, setSelectedAttendanceSubject] = useState<SubjectAttendance | null>(null);
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+
+  // Onboarding state: true if returning user, false if first visit
+  const [onboardingDone, setOnboardingDone] = useState<boolean>(() => {
+    if (typeof localStorage === 'undefined') return true;
+    return !isFirstVisit();
+  });
 
   const handleSaveAttendanceSubject = (subject: SubjectAttendance) => {
     setAttendanceSubjects((prev) => {
@@ -349,6 +356,19 @@ export function App() {
     }
   };
 
+  if (!onboardingDone) {
+    return (
+      <WelcomeFlow
+        onComplete={(intent) => {
+          setOnboardingDone(true);
+          if (intent === 'deadlines' || intent === 'exams') {
+            setIsImportModalOpen(true);
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <MotionConfig reducedMotion="user">
       <LazyMotion features={domMax}>
@@ -426,6 +446,19 @@ export function App() {
                       }}
                     />
 
+                    {/* Compact Attendance Guard Card Row beneath hero area */}
+                    <AttendanceCardRow
+                      subjects={attendanceSubjects}
+                      onSelectSubject={(subject) => {
+                        setSelectedAttendanceSubject(subject);
+                        setIsAttendanceModalOpen(true);
+                      }}
+                      onAddNewSubject={() => {
+                        setSelectedAttendanceSubject(null);
+                        setIsAttendanceModalOpen(true);
+                      }}
+                    />
+
                     {displayTasks.length === 0 ? (
                       <EmptyState
                         onOpenAddTask={handleOpenAddModal}
@@ -496,19 +529,6 @@ export function App() {
                             />
                           </section>
                         )}
-
-                        {/* Compact Attendance Guard Card Row beneath hero area */}
-                        <AttendanceCardRow
-                          subjects={attendanceSubjects}
-                          onSelectSubject={(subject) => {
-                            setSelectedAttendanceSubject(subject);
-                            setIsAttendanceModalOpen(true);
-                          }}
-                          onAddNewSubject={() => {
-                            setSelectedAttendanceSubject(null);
-                            setIsAttendanceModalOpen(true);
-                          }}
-                        />
 
                         {/* Horizontal Task Rails (Keep going, Due soon, Catch up) */}
                         <TaskRail
