@@ -32,6 +32,7 @@ export function clearAllAppData(): void {
     'deadline_rescue_calibration_exclusions',
     'deadline_rescue_sample_banner_dismissed',
     'deadline_rescue_late_night_prompt_date',
+    'deadline_rescue_tour_seen_v1',
   ];
   for (const k of keysToWipe) {
     try {

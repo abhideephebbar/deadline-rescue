@@ -122,6 +122,7 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
 
               {/* Ask Pill Button */}
               <button
+                id="tour-ask-button"
                 type="button"
                 onClick={onOpenAsk}
                 title="Ask Rescue Assistant"
@@ -133,6 +134,7 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
               {/* Settings Dropdown Trigger */}
               <div className="relative" ref={menuRef}>
                 <button
+                  id="tour-menu-button"
                   type="button"
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
                   aria-label="Settings and actions"
@@ -277,6 +279,7 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
 
             {/* Primary Add Task Button */}
             <button
+              id="tour-add-task"
               type="button"
               onClick={onOpenAddTask}
               className="px-3.5 py-2 rounded-full bg-orange-500 hover:bg-orange-400 text-black text-xs font-semibold shadow-lg shadow-orange-500/20 transition-all cursor-pointer flex items-center space-x-1.5 active:scale-95"
@@ -289,6 +292,7 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
           {/* Mobile Right Quick Controls */}
           <div className="sm:hidden flex items-center space-x-2">
             <button
+              id="tour-ask-button-mobile"
               type="button"
               onClick={onOpenAsk}
               title="Ask Rescue Assistant"
@@ -298,6 +302,7 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
             </button>
 
             <button
+              id="tour-add-task-mobile"
               type="button"
               onClick={onOpenAddTask}
               className="p-2 rounded-full bg-orange-500 text-black font-semibold shadow-md"
@@ -307,6 +312,7 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
 
             <div className="relative" ref={menuRef}>
               <button
+                id="tour-menu-button-mobile"
                 type="button"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="p-2 rounded-full bg-[rgba(12,12,16,0.65)] backdrop-blur-[20px] border border-white/[0.12] text-zinc-300"

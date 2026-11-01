@@ -18,7 +18,7 @@ export const AttendanceCardRow: React.FC<AttendanceCardRowProps> = ({
 
   if (subjects.length === 0) {
     return (
-      <div className="rounded-2xl border border-white/[0.08] bg-[rgba(16,16,20,0.6)] backdrop-blur-xl p-4 sm:p-5 flex items-center justify-between gap-4">
+      <div id="tour-attendance" className="rounded-2xl border border-white/[0.08] bg-[rgba(16,16,20,0.6)] backdrop-blur-xl p-4 sm:p-5 flex items-center justify-between gap-4">
         <div className="flex items-center space-x-3 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
             <GraduationCap className="w-5 h-5" />
@@ -46,7 +46,7 @@ export const AttendanceCardRow: React.FC<AttendanceCardRowProps> = ({
   }
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-[rgba(16,16,20,0.6)] backdrop-blur-xl p-4 sm:p-5 space-y-3 font-sans">
+    <div id="tour-attendance" className="rounded-2xl border border-white/[0.08] bg-[rgba(16,16,20,0.6)] backdrop-blur-xl p-4 sm:p-5 space-y-3 font-sans">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <GraduationCap className="w-4 h-4 text-orange-400" />

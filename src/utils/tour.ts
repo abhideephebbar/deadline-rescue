@@ -4,41 +4,101 @@ export const TOUR_SEEN_KEY = 'deadline_rescue_tour_seen_v1';
 
 export interface TourStep {
   id: string;
-  targetId: string;
+  tab: 'today' | 'week' | 'tasks';
+  targetId: string | null;
   title: string;
   description: string;
+  icon: string;
 }
 
 export const TOUR_STEPS: TourStep[] = [
   {
-    id: 'add-task',
-    targetId: 'tour-add-task',
-    title: 'Add or paste deadlines',
-    description: 'Quickly enter an assignment or paste raw text from your syllabus or course announcements.',
+    id: 'welcome',
+    tab: 'today',
+    targetId: null,
+    title: 'Welcome to Deadline Rescue',
+    description: 'A calm, local-first cockpit to keep you on top of assignments, attendance, and study hours.',
+    icon: 'sparkles',
   },
   {
-    id: 'now-card',
-    targetId: 'now-card',
-    title: 'Your single next focus',
-    description: 'We calculate time deficits and study capacity to give you ONE clear answer to "what should I do now?". You can start the focus timer right on the card.',
+    id: 'add-task',
+    tab: 'today',
+    targetId: 'tour-add-task',
+    title: 'Add or paste coursework',
+    description: 'Type a task or paste a raw syllabus / announcement. We automatically parse courses, dates, and estimates.',
+    icon: 'plus',
+  },
+  {
+    id: 'greeting',
+    tab: 'today',
+    targetId: 'tour-greeting',
+    title: 'Context-aware greeting',
+    description: 'Headlines, weather, and quick-action chips that reflect your actual workload and time of day.',
+    icon: 'sun',
+  },
+  {
+    id: 'hero',
+    tab: 'today',
+    targetId: 'tour-hero',
+    title: 'Single next focus',
+    description: 'Algorithmically ranked top tasks so you never wonder what to do next. Built-in stopwatch to track actual effort.',
+    icon: 'flame',
+  },
+  {
+    id: 'attendance',
+    tab: 'today',
+    targetId: 'tour-attendance',
+    title: 'Attendance Guard',
+    description: 'Track class attendance, calculate skip headroom, and get alerts before dropping below target percentage.',
+    icon: 'graduation-cap',
+  },
+  {
+    id: 'rails',
+    tab: 'today',
+    targetId: 'tour-rails',
+    title: 'Keep going & due soon',
+    description: 'Horizontal rails organizing what you worked on recently and what is due in the next 48 hours.',
+    icon: 'layers',
   },
   {
     id: 'forecast',
+    tab: 'week',
     targetId: 'tour-forecast',
     title: '7-day workload forecast',
-    description: 'See which days are clear, filling up, or overloaded. Tap any day to test "What if I move this?" and simulate consequences.',
+    description: 'Compare daily assignment demands against your real focus capacity. Simulate rescheduling with one click.',
+    icon: 'calendar',
   },
   {
-    id: 'ask-button',
+    id: 'tasks',
+    tab: 'tasks',
+    targetId: 'tour-tasks',
+    title: 'Coursework catalog',
+    description: 'View all assignments grouped by course with search, urgency tags, status filters, and bulk actions.',
+    icon: 'check-square',
+  },
+  {
+    id: 'ask',
+    tab: 'today',
     targetId: 'tour-ask-button',
-    title: 'Ask in plain language',
-    description: 'Tell us what is going on—like "I only have 2 hours tonight"—and get grounded suggestions based on your real schedule.',
+    title: 'AI study assistant',
+    description: 'Ask questions in plain English—like "I only have 2 hours tonight"—for grounded timetable advice.',
+    icon: 'message-square',
   },
   {
-    id: 'menu-button',
+    id: 'menu',
+    tab: 'today',
     targetId: 'tour-menu-button',
-    title: 'Tools & study capacity',
-    description: 'Customize your daily focus hours, reset an overwhelmed week, import coursework, or restart this tour anytime.',
+    title: 'Tools & preferences',
+    description: 'Fine-tune daily study capacity, reset an overloaded week, tweak effects, or restart this tour anytime.',
+    icon: 'settings',
+  },
+  {
+    id: 'outro',
+    tab: 'today',
+    targetId: null,
+    title: 'You are all set',
+    description: 'Everything stays private in your browser. Add your first deadline whenever you are ready.',
+    icon: 'check-circle',
   },
 ];
 

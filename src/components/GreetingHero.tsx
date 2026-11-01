@@ -264,6 +264,7 @@ export const GreetingHero: React.FC<GreetingHeroProps> = ({
 
   return (
     <section
+      id="tour-greeting"
       aria-label="Welcome and daily focus"
       className="min-h-[175px] sm:min-h-[195px] flex flex-col justify-center mb-6 sm:mb-8"
     >
