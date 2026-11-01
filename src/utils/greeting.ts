@@ -73,12 +73,19 @@ export function sanitizeGreetingName(raw: string): string {
   return noControl.trim().slice(0, 24);
 }
 
+function getStorage(storage?: Storage): Storage | undefined {
+  if (storage) return storage;
+  if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
+  if (typeof localStorage !== 'undefined') return localStorage;
+  return undefined;
+}
+
 /**
  * Reads the stored name from localStorage.
  */
 export function getStoredName(storage?: Storage): string | null {
   try {
-    const s = storage || (typeof window !== 'undefined' ? window.localStorage : undefined);
+    const s = getStorage(storage);
     if (!s) return null;
     const val = s.getItem(NAME_STORAGE_KEY);
     return val ? sanitizeGreetingName(val) : null;
@@ -92,7 +99,7 @@ export function getStoredName(storage?: Storage): string | null {
  */
 export function setStoredName(name: string, storage?: Storage): void {
   try {
-    const s = storage || (typeof window !== 'undefined' ? window.localStorage : undefined);
+    const s = getStorage(storage);
     if (!s) return;
     const clean = sanitizeGreetingName(name);
     if (clean) {
@@ -109,7 +116,7 @@ export function setStoredName(name: string, storage?: Storage): void {
  */
 export function isNameSkipped(storage?: Storage): boolean {
   try {
-    const s = storage || (typeof window !== 'undefined' ? window.localStorage : undefined);
+    const s = getStorage(storage);
     if (!s) return false;
     return s.getItem(NAME_SKIPPED_KEY) === 'true';
   } catch {
@@ -122,7 +129,7 @@ export function isNameSkipped(storage?: Storage): boolean {
  */
 export function setNameSkipped(skipped: boolean, storage?: Storage): void {
   try {
-    const s = storage || (typeof window !== 'undefined' ? window.localStorage : undefined);
+    const s = getStorage(storage);
     if (!s) return;
     if (skipped) {
       s.setItem(NAME_SKIPPED_KEY, 'true');
@@ -139,7 +146,7 @@ export function setNameSkipped(skipped: boolean, storage?: Storage): void {
  */
 export function clearStoredName(storage?: Storage): void {
   try {
-    const s = storage || (typeof window !== 'undefined' ? window.localStorage : undefined);
+    const s = getStorage(storage);
     if (!s) return;
     s.removeItem(NAME_STORAGE_KEY);
     s.removeItem(NAME_SKIPPED_KEY);
@@ -153,7 +160,7 @@ export function clearStoredName(storage?: Storage): void {
  */
 export function getStoredLastShownId(storage?: Storage): string | null {
   try {
-    const s = storage || (typeof window !== 'undefined' ? window.localStorage : undefined);
+    const s = getStorage(storage);
     if (!s) return null;
     return s.getItem(LAST_SHOWN_ID_KEY);
   } catch {
@@ -166,7 +173,7 @@ export function getStoredLastShownId(storage?: Storage): string | null {
  */
 export function setStoredLastShownId(id: string, storage?: Storage): void {
   try {
-    const s = storage || (typeof window !== 'undefined' ? window.localStorage : undefined);
+    const s = getStorage(storage);
     if (!s) return;
     s.setItem(LAST_SHOWN_ID_KEY, id);
   } catch {
@@ -179,7 +186,7 @@ export function setStoredLastShownId(id: string, storage?: Storage): void {
  */
 export function isFirstVisit(storage?: Storage): boolean {
   try {
-    const s = storage || (typeof window !== 'undefined' ? window.localStorage : undefined);
+    const s = getStorage(storage);
     if (!s) return false;
     return s.getItem(FIRST_VISIT_STORAGE_KEY) !== 'true';
   } catch {
@@ -192,7 +199,7 @@ export function isFirstVisit(storage?: Storage): boolean {
  */
 export function markFirstVisitSeen(storage?: Storage): void {
   try {
-    const s = storage || (typeof window !== 'undefined' ? window.localStorage : undefined);
+    const s = getStorage(storage);
     if (!s) return;
     s.setItem(FIRST_VISIT_STORAGE_KEY, 'true');
   } catch {
