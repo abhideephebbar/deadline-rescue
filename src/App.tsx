@@ -548,15 +548,17 @@ export function App() {
                         )}
 
                         {/* Horizontal Task Rails (Keep going, Due soon, Catch up) */}
-                        <div id="tour-rails" className="space-y-6 sm:space-y-8">
-                          <TaskRail
-                            title="Keep Going"
-                            subtitle="Resume where you left off"
-                            tasks={keepGoingTasks}
-                            sessions={stopwatch.savedSessions}
-                            onSelectTask={handleStartNow}
-                            onStartTask={handleStartNow}
-                          />
+                        <div className="space-y-6 sm:space-y-8">
+                          <div id="tour-rails">
+                            <TaskRail
+                              title="Keep Going"
+                              subtitle="Resume where you left off"
+                              tasks={keepGoingTasks}
+                              sessions={stopwatch.savedSessions}
+                              onSelectTask={handleStartNow}
+                              onStartTask={handleStartNow}
+                            />
+                          </div>
 
                           <TaskRail
                             title="Due Soon"

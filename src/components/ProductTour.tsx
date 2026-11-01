@@ -27,6 +27,15 @@ interface ProductTourProps {
   onStepChange?: (step: TourStep) => void;
 }
 
+interface SpotlightRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+  bottom: number;
+  right: number;
+}
+
 function findTargetElement(targetId: string | null): HTMLElement | null {
   if (!targetId) return null;
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
@@ -66,6 +75,120 @@ const renderStepIcon = (iconName: string) => {
   }
 };
 
+/**
+ * Computes the clamped & height-capped spotlight rect alongside overlap-free popover placement.
+ */
+function computePlacementAndSpotlight(
+  targetRect: DOMRect | null,
+  isMobile: boolean,
+  vh: number,
+  vw: number
+): {
+  spotlight: SpotlightRect | null;
+  popoverStyle: React.CSSProperties;
+  popoverContainerClass: string;
+} {
+  if (!targetRect) {
+    return {
+      spotlight: null,
+      popoverStyle: {
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 60,
+      },
+      popoverContainerClass: 'fixed w-[360px] max-w-sm',
+    };
+  }
+
+  if (isMobile) {
+    // FIX 5: Clamp spotlight bottom so highlighted element is never behind bottom sheet
+    const maxBottom = vh - 240; // 220px sheet height + 20px clearance
+    const left = Math.max(targetRect.left, 12);
+    const right = Math.min(targetRect.right, vw - 12);
+    let top = Math.max(targetRect.top, 12);
+    let bottom = Math.min(targetRect.bottom, maxBottom);
+
+    if (bottom - top > 340) {
+      bottom = top + 340;
+    }
+    if (bottom < top) {
+      bottom = top;
+    }
+
+    return {
+      spotlight: {
+        top,
+        left,
+        bottom,
+        right,
+        width: Math.max(0, right - left),
+        height: Math.max(0, bottom - top),
+      },
+      popoverStyle: {
+        zIndex: 60,
+      },
+      popoverContainerClass: 'fixed bottom-4 left-4 right-4',
+    };
+  }
+
+  // Desktop anchored placement
+  const left = Math.max(targetRect.left, 12);
+  const right = Math.min(targetRect.right, vw - 12);
+  let top = Math.max(targetRect.top, 12);
+  let bottom = Math.min(targetRect.bottom, vh - 12);
+
+  // Horizontal position: center around targetCenterX, clamped inside viewport
+  const targetCenterX = targetRect.left + targetRect.width / 2;
+  const leftPos = Math.max(16, Math.min(vw - 380, targetCenterX - 180));
+
+  let popoverTop: number;
+
+  // FIX 4: Overlap guarantee
+  // a. Place BELOW if innerHeight - spotlight.bottom >= 236
+  const tentativeBottom = Math.min(bottom, top + 340);
+  if (vh - tentativeBottom >= 236) {
+    bottom = tentativeBottom;
+    popoverTop = bottom + 12;
+  } else if (top >= 236) {
+    // b. Place ABOVE if spotlight.top >= 236
+    if (bottom - top > 340) {
+      top = Math.max(12, bottom - 340);
+    }
+    popoverTop = top - 232;
+  } else {
+    // c. Pin popover to bottom and re-crop spotlight bottom so they never intersect
+    popoverTop = vh - 236;
+    bottom = Math.min(bottom, vh - 248);
+    if (bottom - top > 340) {
+      top = Math.max(12, bottom - 340);
+    }
+    if (bottom < top) {
+      bottom = top;
+    }
+  }
+
+  const spotlightWidth = Math.max(0, right - left);
+  const spotlightHeight = Math.max(0, bottom - top);
+
+  return {
+    spotlight: {
+      top,
+      left,
+      bottom,
+      right,
+      width: spotlightWidth,
+      height: spotlightHeight,
+    },
+    popoverStyle: {
+      top: popoverTop,
+      left: leftPos,
+      zIndex: 60,
+    },
+    popoverContainerClass: 'fixed w-[360px] max-w-sm',
+  };
+}
+
 export const ProductTour: React.FC<ProductTourProps> = ({
   isOpen,
   onClose,
@@ -94,11 +217,12 @@ export const ProductTour: React.FC<ProductTourProps> = ({
     }
   }, [isOpen, currentStep, activeTab, onStepChange]);
 
-  // Target element measurement with polling across tab transitions
+  // Target element measurement with polling across tab transitions + settle delay
   useEffect(() => {
     if (!isOpen || !currentStep) return;
 
     let timerId: number | undefined;
+    let settleTimerId: number | undefined;
     let pollCount = 0;
     const maxPolls = 40; // 40 * 50ms = 2000ms max
     const pollInterval = 50;
@@ -115,6 +239,14 @@ export const ProductTour: React.FC<ProductTourProps> = ({
         if (rect.width > 0 && rect.height > 0) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           setTargetRect(el.getBoundingClientRect());
+
+          // FIX 6: Re-measure ~150ms later after smooth scroll settles
+          settleTimerId = window.setTimeout(() => {
+            const settledEl = findTargetElement(currentStep.targetId);
+            if (settledEl) {
+              setTargetRect(settledEl.getBoundingClientRect());
+            }
+          }, 150);
           return;
         }
       }
@@ -142,6 +274,7 @@ export const ProductTour: React.FC<ProductTourProps> = ({
 
     return () => {
       if (timerId !== undefined) clearTimeout(timerId);
+      if (settleTimerId !== undefined) clearTimeout(settleTimerId);
       window.removeEventListener('resize', handleUpdate);
       window.removeEventListener('scroll', handleUpdate, true);
     };
@@ -211,6 +344,8 @@ export const ProductTour: React.FC<ProductTourProps> = ({
 
   const isLastStep = currentStepIndex === TOUR_STEPS.length - 1;
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
 
   // Personalize title on outro step if name is known
   const storedName = getStoredName();
@@ -221,34 +356,9 @@ export const ProductTour: React.FC<ProductTourProps> = ({
         : 'You are set'
       : currentStep.title;
 
-  // Position popover
-  let popoverContainerClass = '';
-  let popoverStyle: React.CSSProperties = {};
-
-  if (isMobile) {
-    // Mobile bottom sheet style
-    popoverContainerClass = 'fixed bottom-4 left-4 right-4 z-60';
-    popoverStyle = {};
-  } else if (targetRect) {
-    const spaceBelow = window.innerHeight - targetRect.bottom;
-    const placeAbove = spaceBelow < 220;
-    const targetCenterX = targetRect.left + targetRect.width / 2;
-    const leftPos = Math.max(16, Math.min(window.innerWidth - 380, targetCenterX - 180));
-
-    popoverContainerClass = 'fixed z-60 w-[360px] max-w-sm';
-    popoverStyle = {
-      top: placeAbove ? Math.max(16, targetRect.top - 210) : targetRect.bottom + 12,
-      left: leftPos,
-    };
-  } else {
-    // Screen-centered fallback
-    popoverContainerClass = 'fixed z-60 w-[360px] max-w-sm';
-    popoverStyle = {
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-    };
-  }
+  // Compute clamped spotlight rect and overlap-safe popover styling
+  const { spotlight, popoverStyle, popoverContainerClass } =
+    computePlacementAndSpotlight(targetRect, isMobile, vh, vw);
 
   return (
     <div
@@ -259,7 +369,7 @@ export const ProductTour: React.FC<ProductTourProps> = ({
       className="fixed inset-0 z-50 overflow-hidden font-sans"
     >
       {/* Background Dimmer & Click-outside-to-skip Layer */}
-      {targetRect ? (
+      {spotlight ? (
         <div
           onClick={handleSkip}
           className="fixed inset-0 bg-transparent"
@@ -269,19 +379,20 @@ export const ProductTour: React.FC<ProductTourProps> = ({
         <div
           onClick={handleSkip}
           className="fixed inset-0 bg-black/50 transition-opacity animate-fade-in"
+          style={{ zIndex: 54 }}
         />
       )}
 
-      {/* Spotlight cutout highlight around target element */}
-      {targetRect && (
+      {/* Spotlight cutout highlight around clamped target element */}
+      {spotlight && (
         <>
           <div
             style={{
               position: 'fixed',
-              top: targetRect.top - 4,
-              left: targetRect.left - 4,
-              width: targetRect.width + 8,
-              height: targetRect.height + 8,
+              top: spotlight.top - 4,
+              left: spotlight.left - 4,
+              width: spotlight.width + 8,
+              height: spotlight.height + 8,
               borderRadius: '12px',
               boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5), 0 0 24px rgba(249, 115, 22, 0.4)',
               pointerEvents: 'none',
@@ -302,10 +413,10 @@ export const ProductTour: React.FC<ProductTourProps> = ({
             }}
             style={{
               position: 'fixed',
-              top: targetRect.top - 8,
-              left: targetRect.left - 8,
-              width: targetRect.width + 16,
-              height: targetRect.height + 16,
+              top: spotlight.top - 8,
+              left: spotlight.left - 8,
+              width: spotlight.width + 16,
+              height: spotlight.height + 16,
               borderRadius: '16px',
               pointerEvents: 'none',
               zIndex: 54,

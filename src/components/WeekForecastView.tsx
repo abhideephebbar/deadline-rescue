@@ -128,9 +128,9 @@ export const WeekForecastView: React.FC<WeekForecastViewProps> = ({
   };
 
   return (
-    <div id="tour-forecast" className="space-y-6 sm:space-y-8 font-sans max-w-5xl mx-auto py-2 pb-28 sm:pb-8">
+    <div className="space-y-6 sm:space-y-8 font-sans max-w-5xl mx-auto py-2 pb-28 sm:pb-8">
       {/* Title & Overview */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 px-1">
+      <div id="tour-forecast" className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 px-1">
         <div>
           <h1 className="font-['Bebas_Neue'] text-4xl sm:text-5xl tracking-wide uppercase text-white leading-none">
             Weekly Forecast
