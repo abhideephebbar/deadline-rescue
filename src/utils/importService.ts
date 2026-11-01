@@ -55,7 +55,7 @@ export async function parseTasksWithFallback(
         return {
           tasks,
           source: 'gemini',
-          notice: 'Parsed using Gemini AI (serverless)',
+          notice: 'Parsed with AI',
         };
       }
     }

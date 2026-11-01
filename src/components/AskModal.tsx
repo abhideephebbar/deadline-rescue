@@ -92,7 +92,6 @@ export const AskModal: React.FC<AskModalProps> = ({
   const [offeredTaskIds, setOfferedTaskIds] = useState<string[]>([]);
   const [healthStatus, setHealthStatus] = useState<string | null>(null);
   const [connectionState, setConnectionState] = useState<ConnectionState>('checking');
-  const [aiModel, setAiModel] = useState<string>('gemini-3.5-flash-lite');
   const hasProbedOnMount = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -112,12 +111,10 @@ export const AskModal: React.FC<AskModalProps> = ({
         return;
       }
       const data = await res.json();
-      const model = data.model || 'gemini-3.5-flash-lite';
-      setAiModel(model);
       if (data.hasKey) {
         setConnectionState('ready');
         if (showStatusStrip) {
-          setHealthStatus(`AI key found, model ${model}`);
+          setHealthStatus('AI assistant connected and ready');
         }
       } else {
         setConnectionState('no_key');
@@ -308,7 +305,7 @@ export const AskModal: React.FC<AskModalProps> = ({
     if (source === 'gemini') {
       return (
         <span
-          title="Powered by Gemini AI"
+          title="Answered by AI"
           className="text-[10px] px-1.5 py-0.5 rounded border border-orange-500/30 bg-orange-500/10 text-orange-300 font-medium cursor-help"
         >
           ✦ AI
@@ -322,7 +319,7 @@ export const AskModal: React.FC<AskModalProps> = ({
 
     if (reason === 'no_key') {
       label = 'Local answer';
-      tooltip = 'Connect GEMINI_API_KEY on the server for conversational answers.';
+      tooltip = 'Connect an AI key on the server for conversational answers.';
     } else if (
       reason === 'server_error' ||
       reason === 'rate_limited' ||
@@ -331,7 +328,7 @@ export const AskModal: React.FC<AskModalProps> = ({
     ) {
       label = 'Reconnecting…';
       tooltip =
-        'Using local rule engine while the server recovers. Gemini will take over automatically.';
+        'Using the local rule engine while the AI recovers. It will take over automatically.';
     }
 
     return (
@@ -368,12 +365,7 @@ export const AskModal: React.FC<AskModalProps> = ({
 
     let dotColor = 'bg-emerald-400';
     let pillStyle = 'border-emerald-500/30 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-950/60';
-    let labelNode: React.ReactNode = (
-      <>
-        <span className="sm:hidden">AI ready</span>
-        <span className="hidden sm:inline">AI ready · {aiModel}</span>
-      </>
-    );
+    let labelNode: React.ReactNode = 'AI ready';
 
     if (connectionState === 'checking') {
       dotColor = 'bg-amber-400';

@@ -238,7 +238,7 @@ export default async function handler(req: any, res?: any) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     const fallbackPayload: AskServerResponse = {
-      reply: 'GEMINI_API_KEY not configured. Falling back to local rule-based assistant.',
+      reply: 'AI key not configured. Falling back to local rule-based assistant.',
       source: 'rule-based',
       fallbackToLocal: true,
       fallbackReason: 'no_key',
