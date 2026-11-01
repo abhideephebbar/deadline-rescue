@@ -258,11 +258,19 @@ export const ProductTour: React.FC<ProductTourProps> = ({
       aria-describedby="tour-step-desc"
       className="fixed inset-0 z-50 overflow-hidden font-sans"
     >
-      {/* Dimmed Background Overlay */}
-      <div
-        onClick={handleSkip}
-        className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity animate-fade-in"
-      />
+      {/* Background Dimmer & Click-outside-to-skip Layer */}
+      {targetRect ? (
+        <div
+          onClick={handleSkip}
+          className="fixed inset-0 bg-transparent"
+          style={{ zIndex: 54 }}
+        />
+      ) : (
+        <div
+          onClick={handleSkip}
+          className="fixed inset-0 bg-black/50 transition-opacity animate-fade-in"
+        />
+      )}
 
       {/* Spotlight cutout highlight around target element */}
       {targetRect && (
@@ -275,7 +283,7 @@ export const ProductTour: React.FC<ProductTourProps> = ({
               width: targetRect.width + 8,
               height: targetRect.height + 8,
               borderRadius: '12px',
-              boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.65), 0 0 24px rgba(249, 115, 22, 0.4)',
+              boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5), 0 0 24px rgba(249, 115, 22, 0.4)',
               pointerEvents: 'none',
               zIndex: 55,
               border: '2px solid rgba(249, 115, 22, 0.8)',
