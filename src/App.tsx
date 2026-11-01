@@ -34,7 +34,7 @@ import { buildAppFacts } from './utils/facts';
 import { GreetingActionType, isFirstVisit } from './utils/greeting';
 import { getWorkloadMood } from './utils/mood';
 import { isSampleTaskSet, isSampleBannerDismissed, dismissSampleBanner } from './utils/sampleDetection';
-import { generateTourDemoTasks } from './utils/tour';
+import { generateTourDemoTasks, isTourSeen, markTourSeen } from './utils/tour';
 import { clearStoredWeather, getStoredWeatherOptIn, setStoredWeatherOptIn } from './utils/weather';
 import { SubjectAttendance } from './types';
 import { getStoredAttendance, saveStoredAttendance, clearStoredAttendance } from './utils/attendanceMath';
@@ -126,6 +126,16 @@ export function App() {
   });
 
   const [isTourActive, setIsTourActive] = useState(false);
+  const [showTourInvite, setShowTourInvite] = useState(false);
+
+  useEffect(() => {
+    if (!showTourInvite) return;
+    const timer = setTimeout(() => {
+      setShowTourInvite(false);
+    }, 12000);
+    return () => clearTimeout(timer);
+  }, [showTourInvite]);
+
   const tourDemoTasks = useMemo(() => generateTourDemoTasks(), []);
   const displayTasks = isTourActive ? tourDemoTasks : tasks;
 
@@ -361,8 +371,15 @@ export function App() {
       <WelcomeFlow
         onComplete={(intent) => {
           setOnboardingDone(true);
-          if (intent === 'deadlines' || intent === 'exams') {
-            setIsImportModalOpen(true);
+          if (intent === 'exploring') {
+            setIsTourActive(true);
+          } else {
+            if (intent === 'deadlines' || intent === 'exams') {
+              setIsImportModalOpen(true);
+            }
+            if (!isTourSeen()) {
+              setShowTourInvite(true);
+            }
           }
         }}
       />
@@ -812,8 +829,59 @@ export function App() {
 
           <ProductTour
             isOpen={isTourActive}
-            onClose={() => setIsTourActive(false)}
+            onClose={() => {
+              setIsTourActive(false);
+              handleTabChange('today');
+            }}
+            activeTab={activeTab}
+            onStepChange={(step) => handleTabChange(step.tab)}
           />
+
+          {/* Post-onboarding one-time tour invite banner */}
+          <AnimatePresence>
+            {showTourInvite && !isTourActive && (
+              <m.div
+                initial={{ opacity: 0, y: 24, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 16, scale: 0.95 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="fixed bottom-20 sm:bottom-8 left-1/2 -translate-x-1/2 z-40 w-[calc(100vw-2rem)] sm:w-auto max-w-md pointer-events-auto"
+              >
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-white/15 bg-[rgba(18,18,24,0.95)] backdrop-blur-xl shadow-2xl text-xs font-sans">
+                  <div className="flex items-center space-x-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-orange-500/15 border border-orange-500/30 text-orange-400 flex items-center justify-center shrink-0">
+                      <Compass className="w-4 h-4" />
+                    </div>
+                    <p className="text-zinc-200 font-medium truncate">
+                      Want a 60-second tour of everything?
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2 shrink-0 w-full sm:w-auto justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowTourInvite(false);
+                        markTourSeen();
+                      }}
+                      className="px-3 py-1.5 rounded-xl text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                    >
+                      I'll explore
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowTourInvite(false);
+                        setIsTourActive(true);
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-black font-semibold transition-colors cursor-pointer shadow-sm active:scale-95"
+                    >
+                      Take the tour
+                    </button>
+                  </div>
+                </div>
+              </m.div>
+            )}
+          </AnimatePresence>
 
           <AskModal
             isOpen={isAskModalOpen}

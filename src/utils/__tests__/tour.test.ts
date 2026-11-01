@@ -7,7 +7,7 @@ import {
   generateTourDemoTasks,
   TOUR_SEEN_KEY,
 } from '../tour';
-import { TASKS_STORAGE_KEY } from '../storageMigration';
+import { TASKS_STORAGE_KEY, clearAllAppData } from '../storageMigration';
 import { Task } from '../../types';
 
 const createLocalStorageMock = () => {
@@ -87,6 +87,13 @@ describe('Product Tour Engine & State Logic', () => {
       markTourSeen();
       expect(isTourSeen()).toBe(true);
       resetTourSeen();
+      expect(isTourSeen()).toBe(false);
+    });
+
+    it('is wiped when clearAllAppData is called', () => {
+      markTourSeen();
+      expect(isTourSeen()).toBe(true);
+      clearAllAppData();
       expect(isTourSeen()).toBe(false);
     });
   });
