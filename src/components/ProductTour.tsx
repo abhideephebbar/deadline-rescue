@@ -18,7 +18,7 @@ export const ProductTour: React.FC<ProductTourProps> = ({ isOpen, onClose }) => 
   const updateTargetPosition = useCallback(() => {
     if (!isOpen || !currentStep) return;
 
-    const el = document.getElementById(currentStep.targetId);
+    const el = currentStep.targetId ? document.getElementById(currentStep.targetId) : null;
     if (el) {
       // Scroll element smoothly into view if off-screen
       el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

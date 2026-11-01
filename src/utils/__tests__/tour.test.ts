@@ -32,29 +32,46 @@ describe('Product Tour Engine & State Logic', () => {
   });
 
   describe('TOUR_STEPS structure', () => {
-    it('has at most 5 steps per product guidelines', () => {
-      expect(TOUR_STEPS.length).toBeLessThanOrEqual(5);
-      expect(TOUR_STEPS.length).toBe(5);
+    it('defines 11 comprehensive tour steps', () => {
+      expect(TOUR_STEPS.length).toBe(11);
     });
 
     it('defines required metadata for every tour step', () => {
       TOUR_STEPS.forEach((step) => {
         expect(step.id).toBeTruthy();
-        expect(step.targetId).toBeTruthy();
+        expect(['today', 'week', 'tasks']).toContain(step.tab);
         expect(step.title.trim().length).toBeGreaterThan(0);
         expect(step.description.trim().length).toBeGreaterThan(0);
+        expect(step.icon.trim().length).toBeGreaterThan(0);
       });
     });
 
-    it('covers all five core touchpoints in sequence', () => {
+    it('covers all eleven touchpoints in sequence', () => {
       const stepIds = TOUR_STEPS.map((s) => s.id);
       expect(stepIds).toEqual([
+        'welcome',
         'add-task',
-        'now-card',
+        'greeting',
+        'hero',
+        'attendance',
+        'rails',
         'forecast',
-        'ask-button',
-        'menu-button',
+        'tasks',
+        'ask',
+        'menu',
+        'outro',
       ]);
+    });
+
+    it('only allows null targetId for welcome and outro', () => {
+      TOUR_STEPS.forEach((step) => {
+        if (step.id === 'welcome' || step.id === 'outro') {
+          expect(step.targetId).toBeNull();
+        } else {
+          expect(typeof step.targetId).toBe('string');
+          expect(step.targetId!.length).toBeGreaterThan(0);
+        }
+      });
     });
   });
 

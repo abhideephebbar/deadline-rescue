@@ -141,6 +141,7 @@ export const HeroCarousel: React.FC<HeroCarouselProps> = ({
 
   return (
     <section
+      id="tour-hero"
       aria-label="Hero carousel"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
