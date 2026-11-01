@@ -88,7 +88,7 @@ function computePlacementAndSpotlight(
   popoverStyle: React.CSSProperties;
   popoverContainerClass: string;
 } {
-  if (!targetRect) {
+  if (!targetRect || targetRect.width < 8 || targetRect.height < 8) {
     return {
       spotlight: null,
       popoverStyle: {
@@ -236,15 +236,19 @@ export const ProductTour: React.FC<ProductTourProps> = ({
       const el = findTargetElement(currentStep.targetId);
       if (el) {
         const rect = el.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
+        if (rect.width >= 8 && rect.height >= 8) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          setTargetRect(el.getBoundingClientRect());
+          const initialRect = el.getBoundingClientRect();
+          setTargetRect(initialRect.width >= 8 && initialRect.height >= 8 ? initialRect : null);
 
           // FIX 6: Re-measure ~150ms later after smooth scroll settles
           settleTimerId = window.setTimeout(() => {
             const settledEl = findTargetElement(currentStep.targetId);
             if (settledEl) {
-              setTargetRect(settledEl.getBoundingClientRect());
+              const settledRect = settledEl.getBoundingClientRect();
+              setTargetRect(settledRect.width >= 8 && settledRect.height >= 8 ? settledRect : null);
+            } else {
+              setTargetRect(null);
             }
           }, 150);
           return;
@@ -262,10 +266,16 @@ export const ProductTour: React.FC<ProductTourProps> = ({
     findTarget();
 
     const handleUpdate = () => {
-      if (!currentStep.targetId) return;
+      if (!currentStep.targetId) {
+        setTargetRect(null);
+        return;
+      }
       const el = findTargetElement(currentStep.targetId);
       if (el) {
-        setTargetRect(el.getBoundingClientRect());
+        const rect = el.getBoundingClientRect();
+        setTargetRect(rect.width >= 8 && rect.height >= 8 ? rect : null);
+      } else {
+        setTargetRect(null);
       }
     };
 
