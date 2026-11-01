@@ -138,7 +138,7 @@ export default async function handler(req: any, res?: any) {
     // Graceful signal for client to fall back to rule-based parser
     const fallbackResponse = {
       fallbackToLocal: true,
-      message: 'GEMINI_API_KEY is not configured on the server. Falling back to rule-based parser.',
+      message: 'AI key is not configured on the server. Falling back to rule-based parser.',
     };
 
     if (res?.status) {
@@ -238,7 +238,7 @@ ${wrappedStudentText}`;
       );
       const fallbackPayload = {
         fallbackToLocal: true,
-        message: `Gemini API returned status ${apiRes.status}. Falling back to rule-based parser.`,
+        message: `AI service returned status ${apiRes.status}. Falling back to rule-based parser.`,
       };
       if (res?.status) {
         return res.status(200).json(fallbackPayload);
